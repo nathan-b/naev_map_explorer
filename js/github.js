@@ -21,25 +21,27 @@
     "encoding"
  */
 function get_repo_dir(repo, path, callback) {
-  const apiUrl = "https://api.github.com/repos";
-  const repoUrl = "naev/naev";
+    const apiUrl = "https://api.github.com/repos";
+    const repoUrl = "naev/naev";
 
-  // XXX TODO Handle pagination
-  const contentsUrl = `${apiUrl}/${repoUrl}/contents/${path}`;
-  console.log(contentsUrl);
-  fetch(contentsUrl, {
-    headers: {
-      "Accept": "application/vnd.github.v3+json"
-    }
-  }).then(async (response) => {
-  	console.log("Got response");
-  	if (response.ok) {
-    	console.log("Calling callback");
-  		callback(await response.json());
-    } else {
-    	console.error(response.statusText);
-    }
-  });
+    // XXX TODO Handle pagination
+    const contentsUrl = `${apiUrl}/${repoUrl}/contents/${path}`;
+    console.log(contentsUrl);
+    fetch(contentsUrl, {
+        headers: {
+            "Accept": "application/vnd.github.v3+json"
+        }
+    }).then(async (response) => {
+        console.log("Got response");
+        if (response.ok) {
+            console.log("Calling callback");
+            callback(await response.json());
+        } else {
+            console.error(response.statusText);
+        }
+    });
 }
 
-module.exports = { get_repo_dir };
+module.exports = {
+    get_repo_dir
+};

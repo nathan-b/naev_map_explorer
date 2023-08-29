@@ -1,18 +1,18 @@
 {
-  "name": "naev_map_explorer",
-  "version": "1.0.0",
-  "description": "Interactive map explorer for the open-source game Naev",
-  "main": "js/index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "electron ."
-  },
-  "author": "Nathan Baker",
-  "license": "MIT",
-  "devDependencies": {
-    "electron": "^26.1.0"
-  },
-  "dependencies": {
-    "jsdom": "^22.1.0"
-  }
+    "name": "naev_map_explorer",
+    "version": "1.0.0",
+    "description": "Interactive map explorer for the open-source game Naev",
+    "main": "js/index.js",
+    "scripts": {
+        "test": "echo \"Error: no test specified\" && exit 1",
+        "start": "electron ."
+    },
+    "author": "Nathan Baker",
+    "license": "MIT",
+    "devDependencies": {
+        "electron": "^26.1.0"
+    },
+    "dependencies": {
+        "jsdom": "^22.1.0"
+    }
 }
