@@ -2,6 +2,10 @@
 // Drawing / canvas stuff
 // Runs in sandbox
 //
+function get_canvas_dimensions(canvas) {
+    return [canvas.width, canvas.height];
+}
+
 function rotate(p, o, deg) {
     let dx = p.x - o.x;
     let dy = p.y - o.y;
@@ -12,14 +16,29 @@ function rotate(p, o, deg) {
     return new Point(x + o.x, y + o.y);
 }
 
+/**
+ * Convert radians to degrees
+ *
+ * @param {*} radians  Angle in radians
+ * @returns Angle in degrees
+ */
 Math.degrees = function(radians) {
     return (radians * 180) / Math.PI;
 };
 
+/**
+ * Convert degrees to radians
+ *
+ * @param {*} degrees  Angle in degrees
+ * @returns Angle in radians
+ */
 Math.radians = function(degrees) {
     return (degrees * Math.PI) / 180;
 };
 
+/**
+ * Represents a simple x, y point on a 2d coordinate plane.
+ */
 class Point {
     x = 0;
     y = 0;
@@ -30,6 +49,9 @@ class Point {
     }
 }
 
+/**
+ * Describes a circle with origin (x, y) and radius.
+ */
 class Circle {
     x = 0;
     y = 0;
@@ -49,9 +71,16 @@ class Circle {
         return new Point(this.x, this.y);
     }
 
+    /**
+     * Get a set of points for connecting this circle with another.
+     * @param {*} other  The other circle to connect with
+     * @returns  Two-element array of Point objects representing the start and
+     *           end points of the connecting line
+     */
     connecting_pts(other) {
         let p1, p2;
 
+        // We want p1 to be the leftmost circle
         if (this.x < other.x) {
             p1 = {
                 ...this
@@ -68,12 +97,16 @@ class Circle {
             };
         }
 
+        // Calculate the x and y distances between the center points of the circles
         let dx = Math.abs(p1.x - p2.x);
         let dy = Math.abs(p1.y - p2.y);
 
+        // In a right triangle, the arctan of the ratio (perpendicular / base) provides
+        // the value of the corresponding angle between the base and the hypotenuse.
         let alpha = Math.degrees(Math.atan(dy / dx));
         let beta = 90 - alpha;
 
+        // Need to scale the resulting line by the radius
         return [
             rotate({
                     ...p1,
@@ -93,8 +126,13 @@ class Circle {
     }
 }
 
-function drawcircle(circ, color) {
-    const canvas = document.getElementById("test");
+/**
+ * Draw a circle on the given canvas
+ * @param {*} canvas  The canvas to draw the circle on
+ * @param {*} circ    Circle object (has fields .x, .y, and .r for x,y coords and radius)
+ * @param {*} color   Color of the circle to draw
+ */
+function drawcircle(canvas, circ, color) {
     if (canvas.getContext) {
         const ctx = canvas.getContext("2d");
 
@@ -106,22 +144,37 @@ function drawcircle(circ, color) {
     }
 }
 
-function drawline(startx, starty, endx, endy, color) {
-    const canvas = document.getElementById("test");
+/**
+ * Draw a line on the given canvas
+ * @param {*} canvas  The canvas to draw the line on
+ * @param {*} start   Starting coordinates (.x and .y fields)
+ * @param {*} end     Ending coordinates (.x and .y fields)
+ * @param {*} color   Line color
+ */
+function drawline(canvas, start, end, color) {
     if (canvas.getContext) {
         const ctx = canvas.getContext("2d");
 
         ctx.beginPath();
         ctx.strokeStyle = color;
         ctx.lineWidth = 1;
-        ctx.moveTo(startx, starty);
-        ctx.lineTo(endx, endy);
+        ctx.moveTo(start.x, start.y);
+        ctx.lineTo(end.x, end.y);
         ctx.stroke();
     }
 }
 
-function draw_connection(circle1, circle2, color) {
-    const canvas = document.getElementById("test");
+/**
+ * Draw a line connecting the two given circles
+ *
+ * The line will be drawn from the perimeter of one circle to the perimeter of
+ * the other.
+ * @param {*} canvas   The canvas to draw the line on
+ * @param {*} circle1  The first circle to connect
+ * @param {*} circle2  The second circle to connect
+ * @param {*} color    The color of the line
+ */
+function draw_connection(canvas, circle1, circle2, color) {
     if (canvas.getContext) {
         const [p1, p2] = circle1.connecting_pts(circle2);
         const ctx = canvas.getContext("2d");
@@ -134,8 +187,14 @@ function draw_connection(circle1, circle2, color) {
     }
 }
 
-function label_circle(circle, text, color) {
-    const canvas = document.getElementById("test");
+/**
+ * Label the given circle with the given text label.
+ * @param {*} canvas   The canvas to draw the label on
+ * @param {*} circle   The circle to label
+ * @param {*} text     The text of the label
+ * @param {*} color    The color of the label
+ */
+function label_circle(canvas, circle, text, color) {
     if (canvas.getContext) {
         const ctx = canvas.getContext("2d");
         ctx.font = "16px sans";

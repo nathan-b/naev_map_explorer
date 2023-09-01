@@ -35,17 +35,21 @@ function getWindow() {
 }
 
 // Message handlers
-ipcMain.handle('load_from_path', async (event) => {
-    [file_path] = dialog.showOpenDialogSync(getWindow(), {
+ipcMain.handle('load_from_path', async (event, path) => {
+    /*[file_path] = dialog.showOpenDialogSync(getWindow(), {
         title: 'Select your Naev directory',
         properties: ['openFile']
+    });*/
+    return new Promise((resolve, reject) => {
+        naev.read_systems_from_disk(path, (sys_map) => {
+            resolve(JSON.stringify(sys_map));
+        });
     });
-    //XXX
 });
 
 ipcMain.handle('load_from_github', async (event) => {
     return new Promise((resolve, reject) => {
-        naev.read_systems((sys_map) => {
+        naev.read_systems_from_github((sys_map) => {
             resolve(JSON.stringify(sys_map));
         });
     });

@@ -1,6 +1,8 @@
 const gx = require("./github.js");
 const fs = require("fs");
 const jsdom = require("jsdom");
+const os = require("os");
+const path = require("path");
 
 function get_repo_dir_fake(path, callback) {
     fs.readFile(`data/${path}`, {
@@ -11,7 +13,106 @@ function get_repo_dir_fake(path, callback) {
     //return JSON.parse(fs.readFileSync(`data/${path}`, { encoding: "utf8" }));
 }
 
-function read_systems(callback) {
+function get_game_data_dir() {
+    // These are some locations to try by default to find the Naev data
+    let test_basedirs = [
+        "/usr/share/naev/",
+        path.join(os.homedir(), ".var/app/com.valvesoftware.Steam/.local/share/Steam/steamapps/common/Naev/"),
+        "/Applications/Naev.app/Contents/Resources",
+        "%ProgramFiles%\\Naev"
+    ];
+
+    let basedir = "";
+    for (const dir of test_basedirs) {
+        if (fs.existsSync(dir)) {
+            basedir = dir;
+            break;
+        }
+    }
+
+    if (basedir === "") {
+        return basedir;
+    }
+
+    // Now find the data dir
+    let datdir = "";
+    if (fs.existsSync(path.join(basedir, "dat"))) {
+        datdir = path.join(basedir, "dat");
+    } else if (fs.existsSync(path.join(basedir, "ndata", "dat"))) {
+        datdir = path.join(basedir, "ndata", "dat");
+    }
+    return datdir;
+}
+
+function read_systems_from_disk(naev_path, callback) {
+    if (naev_path === "") {
+        // Try to divine the path
+        naev_path = get_game_data_dir();
+    }
+    const spob_dir = path.join(naev_path, 'spob');
+    const ssys_dir = path.join(naev_path, 'ssys');
+    if (!fs.existsSync(spob_dir) || !fs.existsSync(ssys_dir)) {
+        return;
+    }
+
+    console.log("Using path", spob_dir);
+
+    // Step 1: Read all the spob files in the spob dir
+    //    1.1: Iterate all the dir's files
+    let spobs = {};
+    fs.readdir(spob_dir, (err, spob_files) => {
+        // XXX Handle err
+        new Promise((resolve, reject) => {
+            let num_spobs = 0;
+            let read_spobs = 0;
+            for (const spob_file of spob_files) {
+                if (path.extname(spob_file) != '.xml') continue;
+                // 1.2: Read the file from disk
+                ++num_spobs;
+                const spob_path = path.join(spob_dir, spob_file);
+                fs.readFile(spob_path, (err, spob_data) => {
+                    if (err) {
+                        console.error(err.message);
+                        reject();
+                    } else {
+                        const spob = read_spob_file(spob_data);
+                        spobs[spob.name] = spob;
+                        if (++read_spobs == num_spobs) {
+                            console.log("Read", read_spobs, "spobs");
+                            resolve();
+                        }
+                    }
+                });
+            }
+        }).then(() => {
+            console.log("Reading system data");
+            // Step 2: Read the systems in the ssys dir
+            //    2.1: Iterate all the dir's files
+            let system_map = {};
+            fs.readdir(ssys_dir, (err, ssys_files) => {
+                // XXX handle error
+                let num_ssys = 0;
+                let read_ssys = 0;
+                for (const ssys_file of ssys_files) {
+                    if (path.extname(ssys_file) != '.xml') continue;
+                    // 2.2: Read the file from disk
+                    ++num_ssys;
+                    const ssys_path = path.join(ssys_dir, ssys_file);
+                    fs.readFile(ssys_path, (err, sys_data) => {
+                        // XXX Handle err
+                        const ssys = read_ssys_file(sys_data, spobs);
+                        system_map[ssys.name] = ssys;
+                        if (++read_ssys == num_ssys) {
+                            callback(system_map);
+                        }
+                    });
+                }
+            }); // End read ssys files
+        }); // End read ssys directory
+    }); // End read spob dir
+}
+
+function read_systems_from_github(callback) {
     // Step 1: Read all the spob files in the spob dir
     //    1.1: Read the directory contents of the spob dir
     gx.get_repo_dir("naev/naev", "dat/spob", (spob_dir) => {
@@ -168,7 +269,8 @@ class System {
 }
 
 module.exports = {
-    read_systems,
+    read_systems_from_disk,
+    read_systems_from_github,
     Spob,
     System
 };

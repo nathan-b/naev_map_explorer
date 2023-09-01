@@ -13,10 +13,22 @@
     <canvas id="test" width="1000" height="1000"></canvas>
 
     <hr>
+
+    <div id="controls" class="controls">
+        <div id="input_group">
+            <input type="text" size="60" id="naev_path">
+            <button type="button">Browse</button>
+            <button type="button">Load from local path</button>
+        </div>
+        <div id="input_group">
+            <button type="button">Load data from GitHub</button>
+        </div>
+        <div id="input_group" class="naev_tools">
+        </div>
+    </div>
     <div id="status" class="status">
         <p id="statustext" class="statustext"></p>
     </div>
-
     <script src="js/canvas.js"></script>
     <script src="js/render.js"></script>
 </body>
