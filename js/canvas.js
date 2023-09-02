@@ -131,16 +131,22 @@ class Circle {
  * @param {*} canvas  The canvas to draw the circle on
  * @param {*} circ    Circle object (has fields .x, .y, and .r for x,y coords and radius)
  * @param {*} color   Color of the circle to draw
+ * @param {*} fill    Should the circle be filled in?
  */
-function drawcircle(canvas, circ, color) {
+function drawcircle(canvas, circ, color, fill = false) {
     if (canvas.getContext) {
         const ctx = canvas.getContext("2d");
 
         ctx.beginPath();
         ctx.strokeStyle = color;
+        ctx.fillStyle = color;
         ctx.lineWidth = 2;
         ctx.arc(circ.x, circ.y, circ.r, 0, Math.PI * 2, true); // Circle
-        ctx.stroke();
+        if (fill) {
+            ctx.fill();
+        } else {
+            ctx.stroke();
+        }
     }
 }
 

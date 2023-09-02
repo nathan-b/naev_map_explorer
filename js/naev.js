@@ -4,15 +4,6 @@ const jsdom = require("jsdom");
 const os = require("os");
 const path = require("path");
 
-function get_repo_dir_fake(path, callback) {
-    fs.readFile(`data/${path}`, {
-        encoding: "utf8"
-    }, (err, data) => {
-        callback(JSON.parse(data));
-    });
-    //return JSON.parse(fs.readFileSync(`data/${path}`, { encoding: "utf8" }));
-}
-
 function get_game_data_dir() {
     // These are some locations to try by default to find the Naev data
     let test_basedirs = [
@@ -172,48 +163,59 @@ function read_systems_from_github(callback) {
 }
 
 function read_spob_file(xml) {
-    const xmlDoc = (new jsdom.JSDOM(xml)).window.document;
+    const xdoc = (new jsdom.JSDOM(xml, {
+        contentType: "text/xml"
+    })).window.document;
 
-    const spobElement = xmlDoc.querySelector("spob");
-    const name = spobElement.getAttribute("name");
+    const spob_element = xdoc.querySelector("spob");
+    const name = spob_element.getAttribute("name");
 
-    const posElement = xmlDoc.querySelector("pos");
-    const x = posElement.getAttribute("x");
-    const y = posElement.getAttribute("y");
+    const pos = xdoc.querySelector("pos");
+    const x = pos.getAttribute("x");
+    const y = pos.getAttribute("y");
 
-    // Extract tags of the services element as an array
-    const svcArray = Array.from(xmlDoc.querySelectorAll("services > *")).map(
-        (svcElement) => svcElement.tagName
+    // Extract children of the services element as an array
+    const services = Array.from(xdoc.querySelectorAll("services > *")).map(
+        (elem) => elem.tagName
     );
 
-    const tagsArray = Array.from(xmlDoc.querySelectorAll("tags > tag")).map(
-        (tagElement) => tagElement.textContent
+    // And the tags
+    const tagsArray = Array.from(xdoc.querySelectorAll("tags > tag")).map(
+        (elem) => elem.textContent
     );
-    return new Spob(name, x, y, svcArray, tagsArray);
+    return new Spob(name, x, y, services, tagsArray);
 }
 
 function read_ssys_file(xml, spobs) {
-    const xmlDoc = (new jsdom.JSDOM(xml)).window.document;
+    const xdoc = (new jsdom.JSDOM(xml, {
+        contentType: "text/xml"
+    })).window.document;
 
-    const ssysElement = xmlDoc.querySelector("ssys");
-    const name = ssysElement.getAttribute("name");
+    const ssys_element = xdoc.querySelector("ssys");
+    const name = ssys_element.getAttribute("name");
 
-    const posElement = xmlDoc.querySelector("pos");
-    const x = posElement.getAttribute("x");
-    const y = posElement.getAttribute("y");
+    const pos = xdoc.querySelector("pos");
+    const x = pos.getAttribute("x");
+    const y = pos.getAttribute("y");
 
     let sys = new System(name, x, y);
 
     // Get the spobs
-    const spobList = xmlDoc.querySelectorAll("spobs > spob");
-    spobList.forEach(function(spobElem) {
-        sys.addSpob(spobs[spobElem.textContent]);
+    const spobList = xdoc.querySelectorAll("spobs > spob");
+    spobList.forEach(function(spob_elem) {
+        sys.addSpob(spobs[spob_elem.textContent]);
     });
 
     // Get the jumps
-    const jumpList = xmlDoc.querySelectorAll("jumps > jump");
-    jumpList.forEach(function(jumpElem) {
-        sys.addJump(jumpElem.getAttribute("target"));
+    const jumpList = xdoc.querySelectorAll("jumps > jump");
+    jumpList.forEach(function(jump_elem) {
+        const hidden = (jump_elem.querySelector("hidden") !== null);
+        let x = null,
+            y = null;
+        if (jump_elem.querySelector("autopos") === null) {
+            // XXX Read x, y coords
+        }
+        sys.addJump(new Jump(jump_elem.getAttribute("target"), x, y, hidden));
     });
 
     return sys;
@@ -243,6 +245,24 @@ class Spob {
         this.land = services.includes("land");
         this.shipyard = services.includes("shipyard");
         this.restricted = tags.includes("restricted");
+    }
+}
+
+class Jump {
+    target;
+    x;
+    y;
+    hidden = false;
+
+    constructor(target, x, y, hidden) {
+        this.target = target;
+        this.x = x;
+        this.y = y;
+        if (hidden) {
+            this.hidden = hidden;
+        } else {
+            this.hidden = false;
+        }
     }
 }
 

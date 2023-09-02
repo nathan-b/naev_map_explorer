@@ -27,7 +27,7 @@ function system_data_ready(sys_json) {
     const sys_map = JSON.parse(sys_json);
     var lowest = new Point(0, 0);
     var highest = new Point(0, 0);
-    const canvas = document.getElementById('test');
+    const canvas = document.getElementById('map');
 
     Object.keys(sys_map).forEach(function(key, index) {
         const sys = this[key];
@@ -61,22 +61,60 @@ function system_data_ready(sys_json) {
 
     console.log("Scale: ", scale);
 
-    const color1 = "red";
-    const color2 = "orange";
+    const color_sys = "yellow";
+    const color_refuel = "yellow";
+    const color_outfitter = "orange";
+    const color_shipyard = "green";
     const text_color = "white";
-    const line_color = "yellow";
+    const normal_jump = "blue";
+    const hidden_jump = "red";
+    const base_radius = 5;
 
-    Object.keys(sys_map).forEach(function(key, index) {
+    Object.keys(sys_map).forEach(function(key) {
+        // Draw the system circle
         const sys = this[key];
         const coords = flip_y(new Point(
             (sys.x - translation.x) * scale.x,
             (sys.y - translation.y) * scale.y
         ), canvas_max);
-        const circle = new Circle(coords.x, coords.y, 10);
-        drawcircle(canvas, circle, color1);
+        const circle = new Circle(coords.x, coords.y, base_radius);
+        drawcircle(canvas, circle, color_sys);
         label_circle(canvas, circle, sys.name, text_color);
-        sys.jumps.forEach(function(target) {
-            const target_sys = sys_map[target];
+
+        // Draw the inner circle based on available services
+        const services = {
+            'refuel': false,
+            'outfitter': false,
+            'shipyard': false
+        };
+        for (const spob of sys.spobs) {
+            if (spob.restricted) continue;
+            if (spob.refuel) {
+                services.refuel = true;
+            }
+            if (spob.outfitter) {
+                services.outfitter = true;
+            }
+            if (spob.shipyard) {
+                services.shipyard = true;
+            }
+        }
+        let inner_color = null;
+        if (services.shipyard) {
+            inner_color = color_shipyard;
+        } else if (services.outfitter) {
+            inner_color = color_outfitter;
+        } else if (services.refuel) {
+            inner_color = color_refuel;
+        }
+        if (inner_color !== null) {
+            const inner = new Circle(coords.x, coords.y, base_radius - 1);
+            drawcircle(canvas, inner, inner_color, true);
+        }
+
+        // Draw connections for each jump point
+        sys.jumps.forEach(function(jump) {
+            const target_sys = sys_map[jump.target];
             const target_coords = flip_y(new Point(
                 (target_sys.x - translation.x) * scale.x,
                 (target_sys.y - translation.y) * scale.y
@@ -84,8 +122,9 @@ function system_data_ready(sys_json) {
             const target_circle = new Circle(
                 target_coords.x,
                 target_coords.y,
-                10
+                base_radius
             );
+            const line_color = jump.hidden ? hidden_jump : normal_jump;
             draw_connection(canvas, circle, target_circle, line_color);
         });
     }, sys_map);
@@ -93,7 +132,7 @@ function system_data_ready(sys_json) {
 }
 
 // Set up the canvas
-const canvas = document.getElementById('test');
+const canvas = document.getElementById('map');
 const width = canvas.clientWidth;
 const height = canvas.clientHeight;
 canvas.width = width;
