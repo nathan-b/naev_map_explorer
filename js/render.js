@@ -35,37 +35,9 @@ class CanvasRenderer {
         this.canvas.clear();
         this.canvas.set_origin(origin);
 
-        Object.keys(this.systems).forEach(function (key, index) {
-            const sys = this[key];
-            if (sys.x < lowest.x) {
-                lowest.x = sys.x;
-            }
-            if (sys.y < lowest.y) {
-                lowest.y = sys.y;
-            }
-            if (sys.x > highest.x) {
-                highest.x = sys.x;
-            }
-            if (sys.y > highest.y) {
-                highest.y = sys.y;
-            }
-        }, this.systems);
-
-        console.log("Found points:", Object.keys(this.systems).length);
-        console.log("Dimensions:", lowest.x, lowest.y, highest.x, highest.y);
-
-        const translation = lowest;
-        const dims = this.canvas.get_dimensions();
-        console.log("Screen dimensions:", dims[0], dims[1]);
-        // Use the same dimension for both x and y to keep an even aspect ratio
-        const dim = Math.min(...dims);
-        const scale = new Point(
-            dim / (highest.x - lowest.x),
-            dim / (highest.y - lowest.y)
-        );
         const canvas_max = new Point(this.canvas.canvas.width, this.canvas.canvas.height);
-
-        console.log("Scale: ", scale);
+        const translation = new Point(0, 0);
+        const scale = new Point(1, 1);
 
         const color_sys = "yellow";
         const color_refuel = "yellow";
@@ -136,7 +108,6 @@ class CanvasRenderer {
                 canvas.draw_connection(circle, target_circle, line_color);
             });
         }, this.systems);
-        console.log("Done drawing");
     }
 
     /**
@@ -151,7 +122,7 @@ class CanvasRenderer {
     /**
      * Handle the mouse interaction stuff.
      */
-    drag_to_scroll() {
+    scroll_and_zoom() {
         var start = null;
         var last = new Point(0, 0);
         var scale = this.scale;
@@ -159,17 +130,18 @@ class CanvasRenderer {
         var drag = false;
         var renderer = this;
 
-        // When the user clicks down on the canvas,
-        // record the x and y coordinates of the click.
+        /**
+         * When the user clicks down on the canvas, record the coordinates of the click.
+         */
         canvas.addEventListener("mousedown", function (event) {
             start = new Point(event.clientX, event.clientY);
             drag = true;
         });
 
-        // When the user moves the mouse,
-        // check to see if the mouse is still over the canvas.
-        // If it is, then scroll the canvas by the difference
-        // between the current mouse position and the original click position.
+        /**
+         * When the user moves the mouse, scroll the canvas by the offset between
+         * the current mouse position and the original click position.
+         */
         canvas.addEventListener("mousemove", function (event) {
             if (drag && canvas.contains(event.target)) {
                 let dx = event.clientX - start.x;
@@ -180,8 +152,10 @@ class CanvasRenderer {
             }
         });
 
-        // When the user lets go of the mouse,
-        // clear the variables that store the x and y coordinates of the click.
+        /**
+         * When the user lets go of the mouse, reset the tracking and set the offset to
+         * the new origin point.
+         */
         canvas.addEventListener("mouseup", function (event) {
             last = new Point(0, 0);
             if (drag) {
@@ -209,7 +183,7 @@ const height = canvas.clientHeight;
 canvas.width = width;
 canvas.height = height;
 const renderer = new CanvasRenderer(new Canvas('map'));
-renderer.drag_to_scroll();
+renderer.scroll_and_zoom();
 
 window.addEventListener('DOMContentLoaded', (event) => {
     //window.ipc_bridge.load_from_github(system_data_ready);
