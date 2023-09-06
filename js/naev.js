@@ -202,13 +202,13 @@ function read_ssys_file(xml, spobs) {
 
     // Get the spobs
     const spobList = xdoc.querySelectorAll("spobs > spob");
-    spobList.forEach(function(spob_elem) {
+    spobList.forEach(function (spob_elem) {
         sys.addSpob(spobs[spob_elem.textContent]);
     });
 
     // Get the jumps
     const jumpList = xdoc.querySelectorAll("jumps > jump");
-    jumpList.forEach(function(jump_elem) {
+    jumpList.forEach(function (jump_elem) {
         const hidden = (jump_elem.querySelector("hidden") !== null);
         let x = null,
             y = null;
@@ -279,13 +279,13 @@ class System {
         this.y = parseFloat(y);
     }
 
-    addSpob = function(spob) {
+    addSpob(spob) {
         this.spobs.push(spob);
-    };
+    }
 
-    addJump = function(target) {
+    addJump(target) {
         this.jumps.push(target);
-    };
+    }
 }
 
 module.exports = {

@@ -2,10 +2,6 @@
 // Drawing / canvas stuff
 // Runs in sandbox
 //
-function get_canvas_dimensions(canvas) {
-    return [canvas.width, canvas.height];
-}
-
 function rotate(p, o, deg) {
     let dx = p.x - o.x;
     let dy = p.y - o.y;
@@ -22,7 +18,7 @@ function rotate(p, o, deg) {
  * @param {*} radians  Angle in radians
  * @returns Angle in degrees
  */
-Math.degrees = function(radians) {
+Math.degrees = function (radians) {
     return (radians * 180) / Math.PI;
 };
 
@@ -32,11 +28,11 @@ Math.degrees = function(radians) {
  * @param {*} degrees  Angle in degrees
  * @returns Angle in radians
  */
-Math.radians = function(degrees) {
+Math.radians = function (degrees) {
     return (degrees * Math.PI) / 180;
 };
 
-/**
+/**********************************************************
  * Represents a simple x, y point on a 2d coordinate plane.
  */
 class Point {
@@ -49,7 +45,7 @@ class Point {
     }
 }
 
-/**
+/**********************************************************
  * Describes a circle with origin (x, y) and radius.
  */
 class Circle {
@@ -126,85 +122,111 @@ class Circle {
     }
 }
 
-/**
- * Draw a circle on the given canvas
- * @param {*} canvas  The canvas to draw the circle on
- * @param {*} circ    Circle object (has fields .x, .y, and .r for x,y coords and radius)
- * @param {*} color   Color of the circle to draw
- * @param {*} fill    Should the circle be filled in?
+/**********************************************************
+ * A wrapper class for an HTML5 canvas object.
  */
-function drawcircle(canvas, circ, color, fill = false) {
-    if (canvas.getContext) {
-        const ctx = canvas.getContext("2d");
+class Canvas {
+    canvas;
+    ctx;
 
-        ctx.beginPath();
-        ctx.strokeStyle = color;
-        ctx.fillStyle = color;
-        ctx.lineWidth = 2;
-        ctx.arc(circ.x, circ.y, circ.r, 0, Math.PI * 2, true); // Circle
+    constructor(celem_id) {
+        this.canvas = document.getElementById(celem_id);
+        this.ctx = this.canvas.getContext("2d");
+    }
+
+    get_dimensions() {
+        return [this.canvas.width, this.canvas.height];
+    }
+
+    /**
+     * Set the coordinates of the canvas origin.
+     * @param {*} point   Point representing the new (0, 0)
+     */
+    set_origin(point) {
+        // First reset the translation
+        this.ctx.setTransform(1, 0, 0, 1, 0, 0);
+        // Then set the new translation
+        this.ctx.translate(point.x, point.y);
+    }
+    /**
+     * Clear the canvas.
+     */
+    clear() {
+        // Store the current transformation matrix
+        this.ctx.save();
+
+        // Use the identity matrix while clearing the canvas
+        this.ctx.setTransform(1, 0, 0, 1, 0, 0);
+        this.ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // Restore the transform
+        this.ctx.restore();
+    }
+
+    /**
+     * Draw a circle on the canvas.
+     *
+     * @param {*} circ    Circle object (has fields .x, .y, and .r for x,y coords and radius)
+     * @param {*} color   Color of the circle to draw
+     * @param {*} fill    Should the circle be filled in?
+     */
+    draw_circle(circ, color, fill = false) {
+        this.ctx.beginPath();
+        this.ctx.strokeStyle = color;
+        this.ctx.fillStyle = color;
+        this.ctx.lineWidth = 2;
+        this.ctx.arc(circ.x, circ.y, circ.r, 0, Math.PI * 2, true); // Circle
         if (fill) {
-            ctx.fill();
+            this.ctx.fill();
         } else {
-            ctx.stroke();
+            this.ctx.stroke();
         }
     }
-}
 
-/**
- * Draw a line on the given canvas
- * @param {*} canvas  The canvas to draw the line on
- * @param {*} start   Starting coordinates (.x and .y fields)
- * @param {*} end     Ending coordinates (.x and .y fields)
- * @param {*} color   Line color
- */
-function drawline(canvas, start, end, color) {
-    if (canvas.getContext) {
-        const ctx = canvas.getContext("2d");
-
-        ctx.beginPath();
-        ctx.strokeStyle = color;
-        ctx.lineWidth = 1;
-        ctx.moveTo(start.x, start.y);
-        ctx.lineTo(end.x, end.y);
-        ctx.stroke();
+    /**
+     * Draw a line on the canvas.
+     *
+     * @param {*} start   Starting coordinates (.x and .y fields)
+     * @param {*} end     Ending coordinates (.x and .y fields)
+     * @param {*} color   Line color
+     */
+    draw_line(start, end, color) {
+        this.ctx.beginPath();
+        this.ctx.strokeStyle = color;
+        this.ctx.lineWidth = 1;
+        this.ctx.moveTo(start.x, start.y);
+        this.ctx.lineTo(end.x, end.y);
+        this.ctx.stroke();
     }
-}
 
-/**
- * Draw a line connecting the two given circles
- *
- * The line will be drawn from the perimeter of one circle to the perimeter of
- * the other.
- * @param {*} canvas   The canvas to draw the line on
- * @param {*} circle1  The first circle to connect
- * @param {*} circle2  The second circle to connect
- * @param {*} color    The color of the line
- */
-function draw_connection(canvas, circle1, circle2, color) {
-    if (canvas.getContext) {
+    /**
+     * Draw a line connecting the two given circles.
+     *
+     * The line will be drawn from the perimeter of one circle to the perimeter of
+     * the other.
+     * @param {*} circle1  The first circle to connect
+     * @param {*} circle2  The second circle to connect
+     * @param {*} color    The color of the line
+     */
+    draw_connection(circle1, circle2, color) {
         const [p1, p2] = circle1.connecting_pts(circle2);
-        const ctx = canvas.getContext("2d");
-        ctx.beginPath();
-        ctx.strokeStyle = color;
-        ctx.lineWidth = 1;
-        ctx.moveTo(p1.x, p1.y);
-        ctx.lineTo(p2.x, p2.y);
-        ctx.stroke();
+        this.ctx.beginPath();
+        this.ctx.strokeStyle = color;
+        this.ctx.lineWidth = 1;
+        this.ctx.moveTo(p1.x, p1.y);
+        this.ctx.lineTo(p2.x, p2.y);
+        this.ctx.stroke();
     }
-}
 
-/**
- * Label the given circle with the given text label.
- * @param {*} canvas   The canvas to draw the label on
- * @param {*} circle   The circle to label
- * @param {*} text     The text of the label
- * @param {*} color    The color of the label
- */
-function label_circle(canvas, circle, text, color) {
-    if (canvas.getContext) {
-        const ctx = canvas.getContext("2d");
-        ctx.font = "16px sans";
-        ctx.fillStyle = color;
-        ctx.fillText(text, circle.x + circle.r, circle.y - circle.r);
+    /**
+     * Label the given circle with the given text label.
+     * @param {*} circle   The circle to label
+     * @param {*} text     The text of the label
+     * @param {*} color    The color of the label
+     */
+    label_circle(circle, text, color) {
+        this.ctx.font = "16px sans";
+        this.ctx.fillStyle = color;
+        this.ctx.fillText(text, circle.x + circle.r, circle.y - circle.r);
     }
 }
