@@ -20,14 +20,20 @@ class CanvasRenderer {
 
     constructor(canvas) {
         this.canvas = canvas;
+        this.scroll_offset = new Point(0, 0);
+        this.scale = 1.0;
     }
 
     /**
      * Render the model to the canvas.
      */
-    draw_model() {
-        var lowest = new Point(0, 0);
-        var highest = new Point(0, 0);
+    draw_model(new_offset) {
+        let lowest = new Point(0, 0);
+        let highest = new Point(0, 0);
+        let origin = new Point(new_offset.x + this.scroll_offset.x, new_offset.y + this.scroll_offset.y);
+
+        this.canvas.clear();
+        this.canvas.set_origin(origin);
 
         Object.keys(this.systems).forEach(function (key, index) {
             const sys = this[key];
@@ -139,9 +145,61 @@ class CanvasRenderer {
      */
     update_model(sys_json) {
         this.systems = JSON.parse(sys_json);
-        this.draw_model();
+        this.draw_model(new Point(0, 0));
+    }
+
+    /**
+     * Handle the mouse interaction stuff.
+     */
+    drag_to_scroll() {
+        var start = null;
+        var last = new Point(0, 0);
+        var scale = this.scale;
+        var canvas = this.canvas.canvas;
+        var drag = false;
+        var renderer = this;
+
+        // When the user clicks down on the canvas,
+        // record the x and y coordinates of the click.
+        canvas.addEventListener("mousedown", function (event) {
+            start = new Point(event.clientX, event.clientY);
+            drag = true;
+        });
+
+        // When the user moves the mouse,
+        // check to see if the mouse is still over the canvas.
+        // If it is, then scroll the canvas by the difference
+        // between the current mouse position and the original click position.
+        canvas.addEventListener("mousemove", function (event) {
+            if (drag && canvas.contains(event.target)) {
+                let dx = event.clientX - start.x;
+                let dy = event.clientY - start.y;
+                last.x = event.clientX;
+                last.y = event.clientY;
+                renderer.draw_model(new Point(dx, dy));
+            }
+        });
+
+        // When the user lets go of the mouse,
+        // clear the variables that store the x and y coordinates of the click.
+        canvas.addEventListener("mouseup", function (event) {
+            last = new Point(0, 0);
+            if (drag) {
+                if (canvas.contains(event.target)) {
+                    renderer.scroll_offset.x += (event.clientX - start.x);
+                    renderer.scroll_offset.y += (event.clientY - start.y);
+                } else {
+                    renderer.scroll_offset.x += (last.x - start.x);
+                    renderer.scroll_offset.y += (last.y - start.y);
+                }
+            }
+            drag = false;
+            start = null;
+        });
     }
 }
+
+
 
 
 // Set up the canvas
@@ -151,6 +209,7 @@ const height = canvas.clientHeight;
 canvas.width = width;
 canvas.height = height;
 const renderer = new CanvasRenderer(new Canvas('map'));
+renderer.drag_to_scroll();
 
 window.addEventListener('DOMContentLoaded', (event) => {
     //window.ipc_bridge.load_from_github(system_data_ready);
