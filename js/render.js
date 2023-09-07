@@ -27,17 +27,16 @@ class CanvasRenderer {
     /**
      * Render the model to the canvas.
      */
-    draw_model(new_offset) {
+    draw_model(origin, scale) {
         let lowest = new Point(0, 0);
         let highest = new Point(0, 0);
-        let origin = new Point(new_offset.x + this.scroll_offset.x, new_offset.y + this.scroll_offset.y);
+        //let origin = new Point(new_offset.x + this.scroll_offset.x, new_offset.y + this.scroll_offset.y);
 
         this.canvas.clear();
-        this.canvas.set_origin(origin);
+        this.canvas.set_origin_and_scale(origin, scale);
 
         const canvas_max = new Point(this.canvas.canvas.width, this.canvas.canvas.height);
         const translation = new Point(0, 0);
-        const scale = new Point(1, 1);
 
         const color_sys = "yellow";
         const color_refuel = "yellow";
@@ -53,10 +52,7 @@ class CanvasRenderer {
         Object.keys(this.systems).forEach(function (key) {
             // Draw the system circle
             const sys = this[key];
-            const coords = flip_y(new Point(
-                (sys.x - translation.x) * scale.x,
-                (sys.y - translation.y) * scale.y
-            ), canvas_max);
+            const coords = flip_y(new Point(sys.x - translation.x, sys.y - translation.y), canvas_max);
             const circle = new Circle(coords.x, coords.y, base_radius);
             canvas.draw_circle(circle, color_sys);
             canvas.label_circle(circle, sys.name, text_color);
@@ -96,8 +92,8 @@ class CanvasRenderer {
             sys.jumps.forEach(function (jump) {
                 const target_sys = systems[jump.target];
                 const target_coords = flip_y(new Point(
-                    (target_sys.x - translation.x) * scale.x,
-                    (target_sys.y - translation.y) * scale.y
+                    target_sys.x - translation.x,
+                    target_sys.y - translation.y
                 ), canvas_max);
                 const target_circle = new Circle(
                     target_coords.x,
@@ -116,7 +112,9 @@ class CanvasRenderer {
      */
     update_model(sys_json) {
         this.systems = JSON.parse(sys_json);
-        this.draw_model(new Point(0, 0));
+        console.log("Updating", Object.keys(this.systems).length, "systems");
+        this.draw_model(new Point(0, 0), 1.0);
+        console.log("Finished updating");
     }
 
     /**
@@ -144,11 +142,13 @@ class CanvasRenderer {
          */
         canvas.addEventListener("mousemove", function (event) {
             if (drag && canvas.contains(event.target)) {
+                let origin = renderer.scroll_offset;
                 let dx = event.clientX - start.x;
                 let dy = event.clientY - start.y;
+                var p = new Point(origin.x + dx, origin.y + dy);
                 last.x = event.clientX;
                 last.y = event.clientY;
-                renderer.draw_model(new Point(dx, dy));
+                renderer.draw_model(p, renderer.scale);
             }
         });
 
@@ -170,9 +170,25 @@ class CanvasRenderer {
             drag = false;
             start = null;
         });
+
+        /**
+         * Listen to scroll events and change the zoom factor.
+         *
+         * The scale factor goes from 0.5 to 3, with 1 being 1:1.
+         */
+        canvas.addEventListener("wheel", function (event) {
+            event.preventDefault();
+            let scale = renderer.scale;
+            scale += event.deltaY * -0.001; // Determined through experimentation
+            // Restrict scale
+            scale = Math.min(Math.max(0.35, scale), 2);
+            renderer.scale = scale;
+            renderer.draw_model(renderer.scroll_offset, scale);
+        }, {
+            passive: false
+        });
     }
 }
-
 
 
 

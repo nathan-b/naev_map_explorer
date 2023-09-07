@@ -139,15 +139,18 @@ class Canvas {
     }
 
     /**
-     * Set the coordinates of the canvas origin.
+     * Set the coordinates of the canvas origin and the scale factor.
      * @param {*} point   Point representing the new (0, 0)
+     * @param {*} scale   The new scale factor for the canvas
      */
-    set_origin(point) {
+    set_origin_and_scale(point, scale) {
         // First reset the translation
         this.ctx.setTransform(1, 0, 0, 1, 0, 0);
         // Then set the new translation
         this.ctx.translate(point.x, point.y);
+        this.ctx.scale(scale, scale);
     }
+
     /**
      * Clear the canvas.
      */
@@ -225,7 +228,7 @@ class Canvas {
      * @param {*} color    The color of the label
      */
     label_circle(circle, text, color) {
-        this.ctx.font = "16px sans";
+        this.ctx.font = "18px sans";
         this.ctx.fillStyle = color;
         this.ctx.fillText(text, circle.x + circle.r, circle.y - circle.r);
     }
