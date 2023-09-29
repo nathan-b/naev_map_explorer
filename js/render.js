@@ -3,6 +3,23 @@
 // Runs in sandbox, uses the API defined in js for drawing to the canvas.
 //
 
+/**
+ * Naev uses traditional Cartesian coordinates with the origin at the center,
+ * while an HTML5 canvas has the origin at the upper left.
+ *
+ * Rather than try to completely re-center, this function keeps x coordinates
+ * entirely untranslated (so half the map is off the screen to the left) and then
+ * flips the y coordinate (so half the map is off the screen to the bottom).
+ *
+ * This places the origin at the lower-left corner.
+ *
+ * As a result, the default view will be more-or-less the upper-right quadrant of the
+ * map, with the negative portions going off the screen to the left and bottom.
+ *
+ * @param {*} coords  x, y coordinates for the point to flip
+ * @param {*} max     x, y coordinates for the max
+ * @returns
+ */
 function flip_y(coords, max) {
     return new Point(coords.x, max.y - coords.y);
 }
@@ -17,26 +34,23 @@ class CanvasRenderer {
     systems;
     scroll_offset;
     scale;
+    hitbox_cache;
 
     constructor(canvas) {
         this.canvas = canvas;
         this.scroll_offset = new Point(0, 0);
         this.scale = 1.0;
+        this.hitbox_cache = [];
     }
 
     /**
      * Render the model to the canvas.
      */
     draw_model(origin, scale) {
-        let lowest = new Point(0, 0);
-        let highest = new Point(0, 0);
-        //let origin = new Point(new_offset.x + this.scroll_offset.x, new_offset.y + this.scroll_offset.y);
-
         this.canvas.clear();
         this.canvas.set_origin_and_scale(origin, scale);
 
         const canvas_max = new Point(this.canvas.canvas.width, this.canvas.canvas.height);
-        const translation = new Point(0, 0);
 
         const color_sys = "yellow";
         const color_refuel = "yellow";
@@ -45,17 +59,22 @@ class CanvasRenderer {
         const text_color = "white";
         const normal_jump = "blue";
         const hidden_jump = "red";
-        const base_radius = 5;
+        const base_radius = 6;
         const canvas = this.canvas;
         const systems = this.systems;
+        var hitbox_cache = [];
 
         Object.keys(this.systems).forEach(function (key) {
             // Draw the system circle
             const sys = this[key];
-            const coords = flip_y(new Point(sys.x - translation.x, sys.y - translation.y), canvas_max);
+            const coords = flip_y(new Point(sys.x, sys.y), canvas_max);
             const circle = new Circle(coords.x, coords.y, base_radius);
-            canvas.draw_circle(circle, color_sys);
+            const circle2d = canvas.draw_circle(circle, color_sys);
             canvas.label_circle(circle, sys.name, text_color);
+            hitbox_cache.push({
+                'circle': circle2d,
+                'system': sys
+            });
 
             // Draw the inner circle based on available services
             const services = {
@@ -85,15 +104,15 @@ class CanvasRenderer {
             }
             if (inner_color !== null) {
                 const inner = new Circle(coords.x, coords.y, base_radius - 1);
-                canvas.draw_circle(canvas, inner, inner_color, true);
+                canvas.draw_circle(inner, inner_color, true);
             }
 
             // Draw connections for each jump point
             sys.jumps.forEach(function (jump) {
                 const target_sys = systems[jump.target];
                 const target_coords = flip_y(new Point(
-                    target_sys.x - translation.x,
-                    target_sys.y - translation.y
+                    target_sys.x,
+                    target_sys.y
                 ), canvas_max);
                 const target_circle = new Circle(
                     target_coords.x,
@@ -104,6 +123,7 @@ class CanvasRenderer {
                 canvas.draw_connection(circle, target_circle, line_color);
             });
         }, this.systems);
+        this.hitbox_cache = hitbox_cache;
     }
 
     /**
@@ -113,27 +133,48 @@ class CanvasRenderer {
     update_model(sys_json) {
         this.systems = JSON.parse(sys_json);
         console.log("Updating", Object.keys(this.systems).length, "systems");
-        this.draw_model(new Point(0, 0), 1.0);
+        this.draw_model(this.scroll_offset, this.scale);
         console.log("Finished updating");
     }
 
     /**
      * Handle the mouse interaction stuff.
      */
-    scroll_and_zoom() {
+    canvas_mouse_handler() {
+        // Scroll and zoom -- context for callbacks
         var start = null;
         var last = new Point(0, 0);
-        var scale = this.scale;
         var canvas = this.canvas.canvas;
+        var down = false;
         var drag = false;
         var renderer = this;
+
+        /**
+         * Detect clicks on a planet, but drags don't count as clicks.
+         */
+        canvas.addEventListener("click", function (event) {
+            // Figure out which system (if any) the user clicked on
+            if (drag) {
+                drag = false;
+                event.preventDefault();
+                event.stopPropagation();
+            } else {
+                renderer.hitbox_cache.forEach(function (element) {
+                    const circle2d = element.circle;
+                    if (renderer.canvas.ctx.isPointInPath(circle2d, event.offsetX, event.offsetY)) {
+                        console.log("User clicked", element.system.name);
+                        return;
+                    }
+                });
+            }
+        });
 
         /**
          * When the user clicks down on the canvas, record the coordinates of the click.
          */
         canvas.addEventListener("mousedown", function (event) {
             start = new Point(event.clientX, event.clientY);
-            drag = true;
+            down = true;
         });
 
         /**
@@ -141,6 +182,9 @@ class CanvasRenderer {
          * the current mouse position and the original click position.
          */
         canvas.addEventListener("mousemove", function (event) {
+            if (down) {
+                drag = true;
+            }
             if (drag && canvas.contains(event.target)) {
                 let origin = renderer.scroll_offset;
                 let dx = event.clientX - start.x;
@@ -167,7 +211,7 @@ class CanvasRenderer {
                     renderer.scroll_offset.y += (last.y - start.y);
                 }
             }
-            drag = false;
+            down = false;
             start = null;
         });
 
@@ -194,12 +238,15 @@ class CanvasRenderer {
 
 // Set up the canvas
 const canvas = document.getElementById('map');
-const width = canvas.clientWidth;
+/*const width = canvas.clientWidth;
 const height = canvas.clientHeight;
 canvas.width = width;
-canvas.height = height;
+canvas.height = height;*/
+/*const ccon = document.getElementById("canvas_container");
+canvas.width = ccon.offsetWidth;
+canvas.height = ccon.offsetHeight;*/
 const renderer = new CanvasRenderer(new Canvas('map'));
-renderer.scroll_and_zoom();
+renderer.canvas_mouse_handler();
 
 window.addEventListener('DOMContentLoaded', (event) => {
     //window.ipc_bridge.load_from_github(system_data_ready);

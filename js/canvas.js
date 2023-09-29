@@ -172,18 +172,28 @@ class Canvas {
      * @param {*} circ    Circle object (has fields .x, .y, and .r for x,y coords and radius)
      * @param {*} color   Color of the circle to draw
      * @param {*} fill    Should the circle be filled in?
+     *
+     * @returns  Hitbox for the circle (Path2D object)
      */
     draw_circle(circ, color, fill = false) {
+        const circle = new Path2D();
+
         this.ctx.beginPath();
         this.ctx.strokeStyle = color;
         this.ctx.fillStyle = color;
         this.ctx.lineWidth = 2;
-        this.ctx.arc(circ.x, circ.y, circ.r, 0, Math.PI * 2, true); // Circle
+        circle.arc(circ.x, circ.y, circ.r, 0, Math.PI * 2, true); // Circle
         if (fill) {
-            this.ctx.fill();
+            this.ctx.fill(circle);
         } else {
-            this.ctx.stroke();
+            this.ctx.stroke(circle);
         }
+
+        // Draw a hitbox
+        const hitbox = new Path2D();
+        const d = 2 * circ.r;
+        hitbox.rect(circ.x - circ.r, circ.y - circ.r, d, d);
+        return hitbox;
     }
 
     /**

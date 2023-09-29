@@ -16,8 +16,8 @@ const naev = require("./naev.js");
 // Create the UI
 function createWindow() {
     const mainwin = new BrowserWindow({
-        width: 1600,
-        height: 1200,
+        width: 1200,
+        height: 1300,
         webPreferences: {
             preload: path.join(__dirname, 'preload.js')
         }
@@ -59,7 +59,7 @@ ipcMain.handle('load_from_github', async (event) => {
 app.whenReady().then(() => {
     createWindow()
 
-    app.on('activate', function() {
+    app.on('activate', function () {
         // On macOS it's common to re-create a window in the app when the
         // dock icon is clicked and there are no other windows open.
         if (BrowserWindow.getAllWindows().length === 0) createWindow()
@@ -67,29 +67,6 @@ app.whenReady().then(() => {
 })
 
 // Exit handler
-app.on('window-all-closed', function() {
+app.on('window-all-closed', function () {
     if (process.platform !== 'darwin') app.quit()
 })
-
-
-//
-// Actual application logic
-//
-function draw_map(sys_map) { // XXX Remove?
-
-}
-
-/*
-var p1 = new canvas.Circle(11, 11, 10);
-var p2 = new canvas.Circle(75, 75, 15);
-var p3 = new canvas.Circle(150, 200, 15);
-
-canvas.drawcircle(p1, color1);
-canvas.drawcircle(p2, color2);
-canvas.drawcircle(p3, color1);
-
-canvas.draw_connection(p1, p2, line_color);
-canvas.draw_connection(p3, p2, line_color);
-
-canvas.label_circle(p2, "Test planet", text_color);
-*/
