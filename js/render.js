@@ -43,11 +43,22 @@ class CanvasRenderer {
         this.hitbox_cache = [];
     }
 
+    set_canvas_size() {
+        const celem = window.document.getElementById('controls');
+        const width = window.innerWidth - 200;
+        const height = window.innerHeight - celem.clientHeight;
+        if (this.canvas.canvas.width != width || this.canvas.canvas.height != height) {
+            this.canvas.canvas.width = width;
+            this.canvas.canvas.height = height;
+        }
+    }
+
     /**
      * Render the model to the canvas.
      */
     draw_model(origin, scale) {
         this.canvas.clear();
+        this.set_canvas_size();
         this.canvas.set_origin_and_scale(origin, scale);
 
         const canvas_max = new Point(this.canvas.canvas.width, this.canvas.canvas.height);
@@ -238,13 +249,6 @@ class CanvasRenderer {
 
 // Set up the canvas
 const canvas = document.getElementById('map');
-/*const width = canvas.clientWidth;
-const height = canvas.clientHeight;
-canvas.width = width;
-canvas.height = height;*/
-/*const ccon = document.getElementById("canvas_container");
-canvas.width = ccon.offsetWidth;
-canvas.height = ccon.offsetHeight;*/
 const renderer = new CanvasRenderer(new Canvas('map'));
 renderer.canvas_mouse_handler();
 
@@ -252,5 +256,8 @@ window.addEventListener('DOMContentLoaded', (event) => {
     //window.ipc_bridge.load_from_github(system_data_ready);
     window.ipc_bridge.load_from_path('', (model) => {
         renderer.update_model(model);
+        window.addEventListener('resize', () => {
+            renderer.draw_model(renderer.scroll_offset, renderer.scale);
+        });
     });
 });
