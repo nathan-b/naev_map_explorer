@@ -45,7 +45,7 @@ class CanvasRenderer {
 
     set_canvas_size() {
         const celem = window.document.getElementById('controls');
-        const width = window.innerWidth - 200;
+        const width = window.innerWidth - 50;
         const height = window.innerHeight - celem.clientHeight;
         if (this.canvas.canvas.width != width || this.canvas.canvas.height != height) {
             this.canvas.canvas.width = width;
