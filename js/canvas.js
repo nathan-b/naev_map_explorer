@@ -160,7 +160,7 @@ class Canvas {
 
         // Use the identity matrix while clearing the canvas
         this.ctx.setTransform(1, 0, 0, 1, 0, 0);
-        this.ctx.clearRect(0, 0, canvas.width, canvas.height);
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
         // Restore the transform
         this.ctx.restore();
@@ -241,5 +241,117 @@ class Canvas {
         this.ctx.font = "18px sans";
         this.ctx.fillStyle = color;
         this.ctx.fillText(text, circle.x + circle.r, circle.y - circle.r);
+    }
+}
+
+/**********************************************************
+ * Contains all the context for rendering a model to canvas.
+ */
+class CanvasRenderer {
+    canvas;
+    scroll_offset;
+    scale;
+
+    context; ///< Canvas-specific context stored for this renderer object
+
+    // Callbacks
+    update_model = function (model_data) {}; ///< Update the model
+    draw_model = function (origin, scale) {}; ///< Render the model to the canvas
+    on_click = function (event) {}; ///< Fires when the user clicks on the canvas
+
+    constructor(canvas) {
+        this.canvas = canvas;
+        this.scroll_offset = new Point(0, 0);
+        this.scale = 1.0;
+    }
+
+    /**
+     * Handle the mouse interaction stuff.
+     */
+    canvas_mouse_handler() {
+        // Scroll and zoom -- context for callbacks
+        var start = null;
+        var last = new Point(0, 0);
+        var canvas = this.canvas.canvas;
+        var down = false;
+        var drag = false;
+        var renderer = this;
+
+        /**
+         * Detect clicks on the canvas, but drags don't count as clicks.
+         */
+        canvas.addEventListener("click", function (event) {
+            // Figure out which system (if any) the user clicked on
+            if (drag) {
+                drag = false;
+                event.preventDefault();
+                event.stopPropagation();
+            } else {
+                renderer.on_click(event);
+            }
+        });
+
+        /**
+         * When the user presses the mouse button while on the canvas, record the coordinates.
+         */
+        canvas.addEventListener("mousedown", function (event) {
+            start = new Point(event.clientX, event.clientY);
+            down = true;
+        });
+
+        /**
+         * When the user moves the mouse while pressed, scroll the canvas by the offset between
+         * the current mouse position and the original click position.
+         */
+        canvas.addEventListener("mousemove", function (event) {
+            if (down) {
+                drag = true;
+            }
+            if (renderer.draw_model !== null && drag && canvas.contains(event.target)) {
+                let origin = renderer.scroll_offset;
+                let dx = event.clientX - start.x;
+                let dy = event.clientY - start.y;
+                var p = new Point(origin.x + dx, origin.y + dy);
+                last.x = event.clientX;
+                last.y = event.clientY;
+                renderer.draw_model(p, renderer.scale);
+            }
+        });
+
+        /**
+         * When the user lets go of the mouse, reset the tracking and set the offset to
+         * the new origin point.
+         */
+        canvas.addEventListener("mouseup", function (event) {
+            last = new Point(0, 0);
+            if (drag) {
+                if (canvas.contains(event.target)) {
+                    renderer.scroll_offset.x += (event.clientX - start.x);
+                    renderer.scroll_offset.y += (event.clientY - start.y);
+                } else {
+                    renderer.scroll_offset.x += (last.x - start.x);
+                    renderer.scroll_offset.y += (last.y - start.y);
+                }
+            }
+            down = false;
+            start = null;
+        });
+
+        /**
+         * Listen to scroll events and change the zoom factor.
+         *
+         * The scale factor goes from 0.5 to 3, with 1 being 1:1.
+         */
+        canvas.addEventListener("wheel", function (event) {
+            event.preventDefault();
+            let scale = renderer.scale;
+            scale += event.deltaY * -0.001; // Determined through experimentation
+            // Restrict scale
+            scale = Math.min(Math.max(0.35, scale), 2);
+            renderer.scale = scale;
+            renderer.draw_model(renderer.scroll_offset, scale);
+        }, {
+            passive: false
+        });
     }
 }
