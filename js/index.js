@@ -1,19 +1,19 @@
 const {
     app,
     BrowserWindow,
-    ipcMain,
-    dialog
+    ipcMain
 } = require('electron');
 const path = require('path');
 const gx = require("./github.js");
-const canvas = require("./canvas.js");
 const naev = require("./naev.js");
 
 //
 // All the boilerplate required by electron
 //
 
-// Create the UI
+/**
+ * Create the UI
+ */
 function createWindow() {
     const mainwin = new BrowserWindow({
         width: 1200,
@@ -27,6 +27,9 @@ function createWindow() {
     mainwin.webContents.openDevTools();
 }
 
+/**
+ * Get the main window
+ */
 function getWindow() {
     if (BrowserWindow.getAllWindows().length === 0) {
         return null;
