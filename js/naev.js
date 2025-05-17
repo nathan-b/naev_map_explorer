@@ -3,6 +3,9 @@ const fs = require("fs");
 const jsdom = require("jsdom");
 const os = require("os");
 const path = require("path");
+const {
+    promisify
+} = require("util");
 
 function get_game_data_dir() {
     // These are some locations to try by default to find the Naev data
@@ -51,67 +54,61 @@ function read_systems_from_disk(naev_path, callback) {
     // Step 1: Read all the spob files in the spob dir
     //    1.1: Iterate all the dir's files
     let spobs = {};
-    fs.readdir(spob_dir, (err, spob_files) => {
-        // XXX Handle err
-        new Promise((resolve, reject) => {
-            let num_spobs = 0;
-            let read_spobs = 0;
-            let read_times = [];
-            let proc_times = [];
-            console.log(performance.now(), "Reading spob files in path");
-            for (const spob_file of spob_files) {
-                if (path.extname(spob_file) != '.xml') continue;
-                // 1.2: Read the file from disk
-                ++num_spobs;
-                const spob_path = path.join(spob_dir, spob_file);
-                let read_time = performance.now();
-                fs.readFile(spob_path, (err, spob_data) => {
-                    if (err) {
-                        console.error(err.message);
-                        reject();
-                    } else {
-                        const proc_time = performance.now();
-                        read_times.push(proc_time - read_time);
-                        const spob = read_spob_file(spob_data);
-                        spobs[spob.name] = spob;
-                        proc_times.push(performance.now() - proc_time);
-                        if (++read_spobs == num_spobs) {
-                            const average = array => array.reduce((a, b) => a + b) / array.length;
-                            console.log(performance.now(), "Read", read_spobs, "spobs");
-                            console.log("Average read time:", average(read_times), "Average load time:", average(proc_times));
-                            resolve();
-                        }
-                    }
-                });
+    const spobfiles = fs.readdirSync(spob_dir).filter((filename) => path.extname(filename) == '.xml');
+    const sysfiles = fs.readdirSync(ssys_dir).filter((filename) => path.extname(filename) == '.xml');
+
+    //   1.2: Read the spob files from disk
+    console.log(performance.now(), "Reading spob files");
+    const fileReadingPromises = spobfiles.map(async (file) => new Promise((resolve, reject) => {
+        const filePath = path.join(spob_dir, file);
+        fs.readFile(filePath, (err, spob_data) => {
+            if (err) {
+                console.error("Error reading spob file:", err.message);
+                reject(err);
+            } else {
+                // 1.3: Process the spob data
+                const spob = process_spob_file(spob_data);
+                resolve(spob);
             }
-        }).then(() => {
-            console.log(performance.now(), "Reading system data");
-            // Step 2: Read the systems in the ssys dir
-            //    2.1: Iterate all the dir's files
-            let system_map = {};
-            fs.readdir(ssys_dir, (err, ssys_files) => {
-                // XXX handle error
-                let num_ssys = 0;
-                let read_ssys = 0;
-                console.log(performance.now(), "Reading system files in path");
-                for (const ssys_file of ssys_files) {
-                    if (path.extname(ssys_file) != '.xml') continue;
-                    // 2.2: Read the file from disk
-                    ++num_ssys;
-                    const ssys_path = path.join(ssys_dir, ssys_file);
-                    fs.readFile(ssys_path, (err, sys_data) => {
-                        // XXX Handle err
-                        const ssys = read_ssys_file(sys_data, spobs);
-                        system_map[ssys.name] = ssys;
-                        if (++read_ssys == num_ssys) {
-                            console.log(performance.now(), "Done reading system files");
-                            callback(system_map);
-                        }
-                    });
+        });
+    }));
+
+    // Now we've read and processed all the spob files
+    Promise.all(fileReadingPromises).then((spob) => {
+        //    1.4: Add the spobs to the global list (sequential)
+        console.log(performance.now(), "Building object list");
+        spob.forEach((spob) => {
+            spobs[spob.name] = spob;
+        });
+
+        console.log(performance.now(), "Reading system data");
+        // Step 2: Read the systems in the ssys dir
+        //    2.1: Iterate all the dir's files
+        let system_map = {};
+        const sysReadingPromises = sysfiles.map(async (ssys_file) => new Promise((resolve, reject) => {
+            // 2.2: Read the files from disk
+            const ssys_path = path.join(ssys_dir, ssys_file);
+            fs.readFile(ssys_path, (err, sys_data) => {
+                if (err) {
+                    console.error("Error reading system file:", err.message);
+                    reject(err);
+                } else {
+                    const ssys = process_ssys_file(sys_data, spobs);
+                    resolve(ssys);
                 }
-            }); // End read ssys files
-        }); // End read ssys directory
-    }); // End read spob dir
+            });
+        })); // End read ssys files
+
+        console.log(performance.now(), "Building system map");
+        Promise.all(sysReadingPromises).then((ssys) => {
+            //    2.3: Add the systems to the global list (sequential)
+            ssys.forEach((ssys) => {
+                system_map[ssys.name] = ssys;
+            });
+            console.log(performance.now(), "Complete");
+            callback(system_map);
+        });
+    });
 }
 
 function read_systems_from_github(callback) {
@@ -136,7 +133,7 @@ function read_systems_from_github(callback) {
                 if (spob_result.ok) {
                     const spob_xml = await spob_result.text();
                     const before = performance.now();
-                    const spob = read_spob_file(spob_xml);
+                    const spob = process_spob_file(spob_xml);
                     times.push(performance.now() - before);
                     spobs[spob.name] = spob;
                 } else {
@@ -163,7 +160,7 @@ function read_systems_from_github(callback) {
                     for (const ssys_result of ssys_results) {
                         if (ssys_result.ok) {
                             const ssys_xml = await ssys_result.text();
-                            const ssys = read_ssys_file(ssys_xml, spobs);
+                            const ssys = process_ssys_file(ssys_xml, spobs);
                             system_map[ssys.name] = ssys;
                         } else {
                             // XXX TODO Handle error
@@ -176,7 +173,7 @@ function read_systems_from_github(callback) {
     }); // End read spob directory
 }
 
-function read_spob_file(xml) {
+function process_spob_file(xml) {
     const xdoc = (new jsdom.JSDOM(xml, {
         contentType: "text/xml"
     })).window.document;
@@ -200,7 +197,7 @@ function read_spob_file(xml) {
     return new Spob(name, x, y, services, tagsArray);
 }
 
-function read_ssys_file(xml, spobs) {
+function process_ssys_file(xml, spobs) {
     const xdoc = (new jsdom.JSDOM(xml, {
         contentType: "text/xml"
     })).window.document;
