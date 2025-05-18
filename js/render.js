@@ -24,6 +24,9 @@ function flip_y(coords, max) {
     return new Point(coords.x, max.y - coords.y);
 }
 
+/**
+ * Resize the canvas to its correct area within the window
+ */
 function set_canvas_size() {
     const canvas = window.document.getElementById('map');
     const celem = window.document.getElementById('controls');
@@ -35,8 +38,157 @@ function set_canvas_size() {
     }
 }
 
+/**
+ * Show the system map
+ */
+function show_minimap() {
+    const mm = window.document.getElementById('minimap');
+    mm.style.visibility = 'visible';
+}
+
+/**
+ * Hide the system map
+ */
+function hide_minimap() {
+    const mm = window.document.getElementById('minimap');
+    mm.style.visibility = 'hidden';
+}
+
 // Set up the canvas
 const renderer = new CanvasRenderer(new Canvas('map'));
+const minimap = new CanvasRenderer(new Canvas('minimap'));
+
+///////////////////////////////////////////////////////////////////////////
+// System map / minimap
+//
+
+/**
+ * Update the minimap with the given system.
+ * @param {*} system  A system object
+ */
+minimap.update_model = function (system) {
+    this.context = {
+        'system': system
+    }
+    this.draw_model(this.scroll_offset, this.scale);
+}
+
+minimap.draw_model = function (origin, scale) {
+    this.canvas.clear();
+    const canvas_max = new Point(this.canvas.canvas.width, this.canvas.canvas.height);
+    this.canvas.set_origin_and_scale(origin, scale);
+
+    const system = this.context.system;
+    const canvas = this.canvas;
+    // Label the map
+    const color_text = "white";
+    this.canvas.ctx.font = '24px sans';
+    this.canvas.ctx.fillStyle = color_text;
+    this.canvas.ctx.fillText(system.name, 5, 29);
+
+    const color_refuel = "yellow";
+    const color_outfitter = "orange";
+    const color_shipyard = "green";
+    const color_restricted = "red";
+    const normal_jump = "blue";
+    const hidden_jump = "red";
+    const base_radius = 6;
+
+    // Iterate once through the spobs to get a bounding box
+    const padding = 5000;
+    let pmin = new Point(0, 0);
+    let pmax = new Point(0, 0);
+    for (const spob of system.spobs) {
+        const coords = flip_y(new Point(spob.x, spob.y), canvas_max);
+        if (coords.x < pmin.x) {
+            pmin.x = coords.x;
+        }
+        if (coords.y < pmin.y) {
+            pmin.y = coords.y;
+        }
+        if (coords.x > pmax.x) {
+            pmax.x = coords.x;
+        }
+        if (coords.y > pmax.y) {
+            pmax.y = coords.y;
+        }
+    }
+    pmin.x -= padding;
+    pmin.y -= padding;
+    pmax.x += padding;
+    pmax.y += padding;
+
+    let translate = function (point) {
+        // Scale coordinates from pmin - pmax into <0, 0> - canvas_max
+        const coords = flip_y(point, canvas_max);
+        const xscale = canvas_max.x / (pmax.x - pmin.x);
+        const yscale = canvas_max.y / (pmax.y - pmin.y);
+        return new Point((coords.x - pmin.x) * xscale, (coords.y - pmin.y) * yscale);
+    }
+
+    // Draw the spobs
+    for (const spob of system.spobs) {
+        let color = "white";
+        if (spob.restricted) {
+            color = color_restricted;
+        } else if (spob.refuel) {
+            color = color_refuel;
+        } else if (spob.outfitter) {
+            color = color_outfitter;
+        } else if (spob.shipyard) {
+            color = color_shipyard;
+        }
+
+        // Draw the spob
+        const coords = translate(new Point(spob.x, spob.y));
+        console.log("Drawing spob", spob.name, "at", spob.x, spob.y, coords.x, coords.y);
+        const circle = new Circle(coords.x, coords.y, base_radius);
+        const circle2d = canvas.draw_circle(circle, color);
+        canvas.label_circle(circle, spob.name, color_text);
+    }
+
+    // Draw the jumps
+    for (const jump of system.jumps) {
+        let color = normal_jump;
+        if (jump.hidden) {
+            color = hidden_jump;
+        }
+
+        // Draw the jump
+        const coords = translate(new Point(jump.x, jump.y));
+        const circle = new Circle(coords.x, coords.y, base_radius);
+        const circle2d = canvas.draw_circle(circle, color);
+        canvas.label_circle(circle, jump.target, color_text);
+        console.log("Drawing jump", jump.target, "at", jump.x, jump.y);
+    }
+
+    // Create a button element that shows in the upper right to close the minimap
+    const button = document.createElement("button");
+    button.innerHTML = "X";
+    button.style.position = "absolute";
+    button.style.top = "10px";
+    button.style.right = "10px";
+    button.style.zIndex = "1000";
+    button.style.backgroundColor = "black";
+    button.style.color = "white";
+    button.style.border = "none";
+    button.style.padding = "10px";
+    button.style.cursor = "pointer";
+    button.style.fontSize = "16px";
+    button.style.borderRadius = "5px";
+    button.addEventListener("click", function () {
+        hide_minimap();
+        button.remove();
+    });
+    document.body.appendChild(button);
+}
+
+// Set up mouse interactivity
+minimap.canvas_mouse_handler();
+
+///////////////////////////////////////////////////////////////////////////
+// Main map
+//
 
 /**
  * Update the stored systems model from the latest json.
@@ -52,12 +204,19 @@ renderer.update_model = function (sys_json) {
     console.log("Finished updating");
 };
 
+/**
+ * When the user clicks on a system, display the minimap showing that system.
+ * @param {*} event  The click event
+ */
 renderer.on_click = function (event) {
     const renderer = this;
+    // Look through each of the stored hitboxes to see if we clicked on one
     if (this.context.hitbox_cache !== null) {
         this.context.hitbox_cache.forEach(function (element) {
             const circle2d = element.circle;
             if (renderer.canvas.ctx.isPointInPath(circle2d, event.offsetX, event.offsetY)) {
+                minimap.update_model(element.system);
+                show_minimap();
                 console.log("User clicked", element.system.name);
                 return;
             }
@@ -66,7 +225,7 @@ renderer.on_click = function (event) {
 }
 
 /**
- * Render the model to the canvas.
+ * Draw the stored system map (saved in update_model)
  */
 renderer.draw_model = function (origin, scale) {
     this.canvas.clear();
@@ -155,6 +314,8 @@ window.addEventListener('DOMContentLoaded', (event) => {
     //window.ipc_bridge.load_from_github(system_data_ready);
     window.ipc_bridge.load_from_path('', (model) => {
         renderer.update_model(model);
+
+        // Add a resize listener so the canvas can correctly size to the window
         window.addEventListener('resize', () => {
             renderer.draw_model(renderer.scroll_offset, renderer.scale);
         });
