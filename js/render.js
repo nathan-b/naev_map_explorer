@@ -52,11 +52,19 @@ function show_minimap() {
 function hide_minimap() {
     const mm = window.document.getElementById('minimap');
     mm.style.visibility = 'hidden';
+    // Remove the close button if it exists
+    if (minimapCloseButton) {
+        minimapCloseButton.remove();
+        minimapCloseButton = null;
+    }
 }
 
 // Set up the canvas
 const renderer = new CanvasRenderer(new Canvas('map'));
 const minimap = new CanvasRenderer(new Canvas('minimap'));
+
+// Store reference to minimap close button
+let minimapCloseButton = null;
 
 ///////////////////////////////////////////////////////////////////////////
 // System map / minimap
@@ -71,6 +79,27 @@ minimap.update_model = function (system) {
         'system': system
     }
     this.draw_model(this.scroll_offset, this.scale);
+
+    // Create the close button if it doesn't exist
+    if (!minimapCloseButton) {
+        minimapCloseButton = document.createElement("button");
+        minimapCloseButton.innerHTML = "X";
+        minimapCloseButton.style.position = "absolute";
+        minimapCloseButton.style.top = "10px";
+        minimapCloseButton.style.right = "10px";
+        minimapCloseButton.style.zIndex = "1000";
+        minimapCloseButton.style.backgroundColor = "black";
+        minimapCloseButton.style.color = "white";
+        minimapCloseButton.style.border = "none";
+        minimapCloseButton.style.padding = "10px";
+        minimapCloseButton.style.cursor = "pointer";
+        minimapCloseButton.style.fontSize = "16px";
+        minimapCloseButton.style.borderRadius = "5px";
+        minimapCloseButton.addEventListener("click", function () {
+            hide_minimap();
+        });
+        document.body.appendChild(minimapCloseButton);
+    }
 }
 
 minimap.draw_model = function (origin, scale) {
@@ -165,26 +194,6 @@ minimap.draw_model = function (origin, scale) {
     this.canvas.ctx.fillStyle = color_text;
     this.canvas.ctx.fillText(system.name, 5, 29);
     this.canvas.ctx.restore();
-
-    // Create a button element that shows in the upper right to close the minimap
-    const button = document.createElement("button");
-    button.innerHTML = "X";
-    button.style.position = "absolute";
-    button.style.top = "10px";
-    button.style.right = "10px";
-    button.style.zIndex = "1000";
-    button.style.backgroundColor = "black";
-    button.style.color = "white";
-    button.style.border = "none";
-    button.style.padding = "10px";
-    button.style.cursor = "pointer";
-    button.style.fontSize = "16px";
-    button.style.borderRadius = "5px";
-    button.addEventListener("click", function () {
-        hide_minimap();
-        button.remove();
-    });
-    document.body.appendChild(button);
 }
 
 // Set up mouse interactivity

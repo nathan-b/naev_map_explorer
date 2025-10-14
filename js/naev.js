@@ -11,6 +11,38 @@ const {
     XMLParser
 } = require("fast-xml-parser");
 
+/**
+ * Calculate automatic jump point positions for jumps with autopos flag.
+ * This replicates the logic from Naev's system_reconstructJumps function.
+ *
+ * @param {Object} system_map - Map of all systems by name
+ */
+function reconstruct_jump_positions(system_map) {
+    for (const sysName in system_map) {
+        const sys = system_map[sysName];
+
+        for (const jump of sys.jumps) {
+            if (jump.autopos && system_map[jump.target]) {
+                const targetSys = system_map[jump.target];
+
+                // Calculate angle between systems
+                const dx = targetSys.x - sys.x;
+                const dy = targetSys.y - sys.y;
+                let angle = Math.atan2(dy, dx);
+
+                // Normalize angle to be between 0 and 2π
+                if (angle < 0) {
+                    angle += 2 * Math.PI;
+                }
+
+                // Position jump point at system radius along the angle (polar to cartesian)
+                jump.x = sys.radius * Math.cos(angle);
+                jump.y = sys.radius * Math.sin(angle);
+            }
+        }
+    }
+}
+
 function get_game_data_dir() {
     // These are some locations to try by default to find the Naev data
     let test_basedirs = [
@@ -94,6 +126,10 @@ function read_systems_from_disk(naev_path, callback) {
             const ssys = process_ssys(xdoc, spobs);
             system_map[ssys.name] = ssys;
         }
+
+        // Calculate automatic jump positions
+        console.log(performance.now(), "Reconstructing jump positions");
+        reconstruct_jump_positions(system_map);
 
         console.log(performance.now(), "Complete");
         callback(system_map);
@@ -199,6 +235,10 @@ async function read_systems_from_github(callback) {
             if (ssys && ssys.name) system_map[ssys.name] = ssys;
         }
 
+        // Calculate automatic jump positions
+        console.log(performance.now(), "Reconstructing jump positions");
+        reconstruct_jump_positions(system_map);
+
         console.log(performance.now(), "GitHub read complete");
         callback(system_map);
 
@@ -244,7 +284,10 @@ function process_ssys(xdoc, spobs) {
     const x = pos["@_x"];
     const y = pos["@_y"];
 
-    const sys = new System(name, x, y);
+    // Get system radius (default to 10000 if not specified)
+    const radius = ssysEl.general?.radius ? parseFloat(ssysEl.general.radius) : 10000;
+
+    const sys = new System(name, x, y, radius);
 
     // Spobs
     const spobNodes = ssysEl.spobs?.spob;
@@ -263,7 +306,16 @@ function process_ssys(xdoc, spobs) {
         for (const jump of list) {
             const target = jump["@_target"];
             const hidden = !!jump.hidden;
-            sys.addJump(new Jump(target, null, null, hidden));
+            const autopos = jump.hasOwnProperty("autopos");
+
+            // Get position if explicitly defined
+            let x = null, y = null;
+            if (jump.pos) {
+                x = parseFloat(jump.pos["@_x"]);
+                y = parseFloat(jump.pos["@_y"]);
+            }
+
+            sys.addJump(new Jump(target, x, y, hidden, autopos));
         }
     }
 
@@ -302,16 +354,14 @@ class Jump {
     x;
     y;
     hidden = false;
+    autopos = false;
 
-    constructor(target, x, y, hidden) {
+    constructor(target, x, y, hidden, autopos = false) {
         this.target = target;
         this.x = x;
         this.y = y;
-        if (hidden) {
-            this.hidden = hidden;
-        } else {
-            this.hidden = false;
-        }
+        this.hidden = hidden || false;
+        this.autopos = autopos;
     }
 }
 
@@ -319,13 +369,15 @@ class System {
     name;
     x;
     y;
+    radius;
     spobs = [];
     jumps = [];
 
-    constructor(name, x, y) {
+    constructor(name, x, y, radius = 10000) {
         this.name = name;
         this.x = parseFloat(x);
         this.y = parseFloat(y);
+        this.radius = radius;
     }
 
     addSpob(spob) {
