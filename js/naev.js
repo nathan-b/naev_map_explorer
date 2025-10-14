@@ -1,11 +1,15 @@
 const gx = require("./github.js");
-const fs = require("fs");
+const fss = require("fs");
+const fs = require("fs").promises;
 const jsdom = require("jsdom");
 const os = require("os");
 const path = require("path");
 const {
-    promisify
-} = require("util");
+    performance
+} = require("perf_hooks");
+const {
+    XMLParser
+} = require("fast-xml-parser");
 
 function get_game_data_dir() {
     // These are some locations to try by default to find the Naev data
@@ -18,7 +22,7 @@ function get_game_data_dir() {
 
     let basedir = "";
     for (const dir of test_basedirs) {
-        if (fs.existsSync(dir)) {
+        if (fss.existsSync(dir)) {
             basedir = dir;
             break;
         }
@@ -30,204 +34,238 @@ function get_game_data_dir() {
 
     // Now find the data dir
     let datdir = "";
-    if (fs.existsSync(path.join(basedir, "dat"))) {
+    if (fss.existsSync(path.join(basedir, "dat"))) {
         datdir = path.join(basedir, "dat");
-    } else if (fs.existsSync(path.join(basedir, "ndata", "dat"))) {
+    } else if (fss.existsSync(path.join(basedir, "ndata", "dat"))) {
         datdir = path.join(basedir, "ndata", "dat");
     }
     return datdir;
 }
 
 function read_systems_from_disk(naev_path, callback) {
-    if (naev_path === "") {
-        // Try to divine the path
-        naev_path = get_game_data_dir();
-    }
-    const spob_dir = path.join(naev_path, 'spob');
-    const ssys_dir = path.join(naev_path, 'ssys');
-    if (!fs.existsSync(spob_dir) || !fs.existsSync(ssys_dir)) {
-        return;
-    }
+    (async () => {
+        if (naev_path === "") {
+            naev_path = get_game_data_dir();
+        }
 
-    console.log(performance.now(), "Using path", spob_dir);
+        const spob_dir = path.join(naev_path, "spob");
+        const ssys_dir = path.join(naev_path, "ssys");
 
-    // Step 1: Read all the spob files in the spob dir
-    //    1.1: Iterate all the dir's files
-    let spobs = {};
-    const spobfiles = fs.readdirSync(spob_dir).filter((filename) => path.extname(filename) == '.xml');
-    const sysfiles = fs.readdirSync(ssys_dir).filter((filename) => path.extname(filename) == '.xml');
+        console.log(performance.now(), "Using path", spob_dir);
 
-    //   1.2: Read the spob files from disk
-    console.log(performance.now(), "Reading spob files");
-    const fileReadingPromises = spobfiles.map(async (file) => new Promise((resolve, reject) => {
-        const filePath = path.join(spob_dir, file);
-        fs.readFile(filePath, (err, spob_data) => {
-            if (err) {
-                console.error("Error reading spob file:", err.message);
-                reject(err);
-            } else {
-                // 1.3: Process the spob data
-                const spob = process_spob_file(spob_data);
-                resolve(spob);
-            }
+        // Build a list of all XML files to load
+        const [spob_files, sys_files] = await Promise.all([
+            fs.readdir(spob_dir),
+            fs.readdir(ssys_dir),
+        ]);
+        const spob_xml = spob_files.filter(f => f.endsWith(".xml"));
+        const sys_xml = sys_files.filter(f => f.endsWith(".xml"));
+
+        console.log(performance.now(), "Reading XML files");
+
+        // Load all the XML files
+        const spob_read_promises = spob_xml.map(f => fs.readFile(path.join(spob_dir, f), "utf8"));
+        const sys_read_promises = sys_xml.map(f => fs.readFile(path.join(ssys_dir, f), "utf8"));
+
+        // Now wait for the spob reads to complete
+        const spob_buffers = await Promise.all(spob_read_promises);
+
+        // We have to parse all the spobs first, as systems refer to them
+        console.log(performance.now(), "Parsing spob files");
+        const parser = new XMLParser({
+            ignoreAttributes: false,
+            attributeNamePrefix: "@_",
+            allowBooleanAttributes: true,
         });
-    }));
+        const spobs = {};
 
-    // Now we've read and processed all the spob files
-    Promise.all(fileReadingPromises).then((spob) => {
-        //    1.4: Add the spobs to the global list (sequential)
-        console.log(performance.now(), "Building object list");
-        spob.forEach((spob) => {
+        for (const xml of spob_buffers) {
+            const xdoc = parser.parse(xml);
+            const spob = process_spob(xdoc);
             spobs[spob.name] = spob;
-        });
-
-        console.log(performance.now(), "Reading system data");
-        // Step 2: Read the systems in the ssys dir
-        //    2.1: Iterate all the dir's files
-        let system_map = {};
-        const sysReadingPromises = sysfiles.map(async (ssys_file) => new Promise((resolve, reject) => {
-            // 2.2: Read the files from disk
-            const ssys_path = path.join(ssys_dir, ssys_file);
-            fs.readFile(ssys_path, (err, sys_data) => {
-                if (err) {
-                    console.error("Error reading system file:", err.message);
-                    reject(err);
-                } else {
-                    const ssys = process_ssys_file(sys_data, spobs);
-                    resolve(ssys);
-                }
-            });
-        })); // End read ssys files
-
-        console.log(performance.now(), "Building system map");
-        Promise.all(sysReadingPromises).then((ssys) => {
-            //    2.3: Add the systems to the global list (sequential)
-            ssys.forEach((ssys) => {
-                system_map[ssys.name] = ssys;
-            });
-            console.log(performance.now(), "Complete");
-            callback(system_map);
-        });
-    });
-}
-
-function read_systems_from_github(callback) {
-    // Step 1: Read all the spob files in the spob dir
-    //    1.1: Read the directory contents of the spob dir
-    gx.get_repo_dir("naev/naev", "dat/spob", (spob_dir) => {
-        //  1.2: Download each file in the spob dir
-        let spob_promises = [];
-        var num = 0;
-        for (const spob_file of spob_dir) {
-            num++;
-            if (spob_file.type === "file" && spob_file.name.endsWith(".xml")) {
-                const xml_url = spob_file.download_url;
-                spob_promises.push(fetch(xml_url));
-            }
         }
-        //  1.3: Read the downloaded files
-        Promise.all(spob_promises).then(async (spob_results) => {
-            let times = [];
-            let spobs = {};
-            for (const spob_result of spob_results) {
-                if (spob_result.ok) {
-                    const spob_xml = await spob_result.text();
-                    const before = performance.now();
-                    const spob = process_spob_file(spob_xml);
-                    times.push(performance.now() - before);
-                    spobs[spob.name] = spob;
-                } else {
-                    // XXX TODO Handle error
-                }
-            }
 
-            // Step 2: Read the systems
-            //    2.1: Read the directory contents of the ssys dir
-            gx.get_repo_dir("naev/naev", "dat/ssys", (ssys_dir) => {
-                //  2.2: Download each file in the ssys dir
-                let ssys_promises = [];
-                var num = 0;
-                for (const ssys_file of ssys_dir) {
-                    num++;
-                    if (ssys_file.type === "file" && ssys_file.name.endsWith(".xml")) {
-                        const xml_url = ssys_file.download_url;
-                        ssys_promises.push(fetch(xml_url));
-                    }
-                }
-                //  2.3: Read the downloaded files
-                Promise.all(ssys_promises).then(async (ssys_results) => {
-                    let system_map = {};
-                    for (const ssys_result of ssys_results) {
-                        if (ssys_result.ok) {
-                            const ssys_xml = await ssys_result.text();
-                            const ssys = process_ssys_file(ssys_xml, spobs);
-                            system_map[ssys.name] = ssys;
-                        } else {
-                            // XXX TODO Handle error
-                        }
-                    }
-                    callback(system_map);
-                }); // End read ssys files
-            }); // End read ssys directory
-        }); // End read spob files
-    }); // End read spob directory
-}
-
-function process_spob_file(xml) {
-    const xdoc = (new jsdom.JSDOM(xml, {
-        contentType: "text/xml"
-    })).window.document;
-
-    const spob_element = xdoc.querySelector("spob");
-    const name = spob_element.getAttribute("name");
-
-    const pos = xdoc.querySelector("pos");
-    const x = pos.getAttribute("x");
-    const y = pos.getAttribute("y");
-
-    // Extract children of the services element as an array
-    const services = Array.from(xdoc.querySelectorAll("services > *")).map(
-        (elem) => elem.tagName
-    );
-
-    // And the tags
-    const tagsArray = Array.from(xdoc.querySelectorAll("tags > tag")).map(
-        (elem) => elem.textContent
-    );
-    return new Spob(name, x, y, services, tagsArray);
-}
-
-function process_ssys_file(xml, spobs) {
-    const xdoc = (new jsdom.JSDOM(xml, {
-        contentType: "text/xml"
-    })).window.document;
-
-    const ssys_element = xdoc.querySelector("ssys");
-    const name = ssys_element.getAttribute("name");
-
-    const pos = xdoc.querySelector("pos");
-    const x = pos.getAttribute("x");
-    const y = pos.getAttribute("y");
-
-    let sys = new System(name, x, y);
-
-    // Get the spobs
-    const spobList = xdoc.querySelectorAll("spobs > spob");
-    spobList.forEach(function (spob_elem) {
-        sys.addSpob(spobs[spob_elem.textContent]);
-    });
-
-    // Get the jumps
-    const jumpList = xdoc.querySelectorAll("jumps > jump");
-    jumpList.forEach(function (jump_elem) {
-        const hidden = (jump_elem.querySelector("hidden") !== null);
-        let x = null,
-            y = null;
-        if (jump_elem.querySelector("autopos") === null) {
-            // XXX Read x, y coords
+        // Now we can parse the system files
+        const sys_buffers = await Promise.all(sys_read_promises);
+        console.log(performance.now(), "Parsing system files");
+        const system_map = {};
+        for (const xml of sys_buffers) {
+            const xdoc = parser.parse(xml);
+            const ssys = process_ssys(xdoc, spobs);
+            system_map[ssys.name] = ssys;
         }
-        sys.addJump(new Jump(jump_elem.getAttribute("target"), x, y, hidden));
+
+        console.log(performance.now(), "Complete");
+        callback(system_map);
+    })().catch(err => {
+        console.error("Error in read_systems_from_disk:", err);
     });
+}
+
+async function read_systems_from_github(callback) {
+    const parser = new XMLParser({
+        ignoreAttributes: false,
+        attributeNamePrefix: "@_",
+        allowBooleanAttributes: true,
+    });
+
+    // Limit concurrency of fetch requests to avoid blasting github with API requests
+    const pLimit = (concurrency) => {
+        const queue = [];
+        let activeCount = 0;
+
+        const next = () => {
+            if (queue.length === 0 || activeCount >= concurrency) return;
+            activeCount++;
+            const {
+                fn,
+                resolve,
+                reject
+            } = queue.shift();
+            fn()
+                .then(resolve)
+                .catch(reject)
+                .finally(() => {
+                    activeCount--;
+                    next();
+                });
+        };
+
+        return (fn) =>
+            new Promise((resolve, reject) => {
+                queue.push({
+                    fn,
+                    resolve,
+                    reject
+                });
+                process.nextTick(next);
+            });
+    };
+
+    const limit = pLimit(32);
+
+    console.log(performance.now(), "Fetching Naev data from GitHub...");
+
+    try {
+        // Kick off directory listings concurrently
+        const [spob_dir, ssys_dir] = await Promise.all([
+            new Promise((resolve) => gx.get_repo_dir("naev/naev", "dat/spob", resolve)),
+            new Promise((resolve) => gx.get_repo_dir("naev/naev", "dat/ssys", resolve)),
+        ]);
+
+        const spobURLs = spob_dir
+            .filter(f => f.type === "file" && f.name.endsWith(".xml"))
+            .map(f => f.download_url);
+        const ssysURLs = ssys_dir
+            .filter(f => f.type === "file" && f.name.endsWith(".xml"))
+            .map(f => f.download_url);
+
+        console.log(performance.now(), `Preparing ${spobURLs.length} spob + ${ssysURLs.length} system downloads`);
+
+        const fetchText = async (url) => {
+            try {
+                const res = await fetch(url);
+                if (!res.ok) return null;
+                return await res.text();
+            } catch {
+                return null;
+            }
+        };
+
+        // Start both download groups
+        console.log(performance.now(), "Starting concurrent downloads (limited concurrency)");
+        const spobDownloadPromise = Promise.all(spobURLs.map((url) => limit(() => fetchText(url))));
+        const ssysDownloadPromise = Promise.all(ssysURLs.map((url) => limit(() => fetchText(url))));
+
+        // We have to parse all the spobs first, as systems refer to them
+        const spobTexts = await spobDownloadPromise;
+        console.log(performance.now(), "Parsing spob files");
+        const spobs = {};
+        for (const xml of spobTexts.filter(Boolean)) {
+            const xdoc = parser.parse(xml);
+            const spob = process_spob(xdoc);
+            if (spob && spob.name) spobs[spob.name] = spob;
+        }
+
+        // Now get system files (most likely already downloaded)
+        console.log(performance.now(), "Collecting system downloads");
+        const ssysTexts = await ssysDownloadPromise;
+
+        console.log(performance.now(), "Parsing system files");
+        const system_map = {};
+        for (const xml of ssysTexts.filter(Boolean)) {
+            const xdoc = parser.parse(xml);
+            const ssys = process_ssys(xdoc, spobs);
+            if (ssys && ssys.name) system_map[ssys.name] = ssys;
+        }
+
+        console.log(performance.now(), "GitHub read complete");
+        callback(system_map);
+
+    } catch (err) {
+        console.error("Error in read_systems_from_github:", err);
+    }
+}
+
+function process_spob(xdoc) {
+    const spobEl = xdoc.spob;
+    if (!spobEl) return null;
+
+    const name = spobEl["@_name"];
+    const pos = spobEl.pos || {};
+    const x = pos["@_x"];
+    const y = pos["@_y"];
+
+    // Collect services (could be object or array)
+    const services = [];
+    if (spobEl.services) {
+        const serviceNodes = spobEl.services;
+        for (const key of Object.keys(serviceNodes)) {
+            if (key !== "@_") services.push(key);
+        }
+    }
+
+    // Tags
+    let tags = [];
+    if (spobEl.tags?.tag) {
+        const t = spobEl.tags.tag;
+        tags = Array.isArray(t) ? t.map(v => v["#text"] || v) : [t["#text"] || t];
+    }
+
+    return new Spob(name, x, y, services, tags);
+}
+
+function process_ssys(xdoc, spobs) {
+    const ssysEl = xdoc.ssys;
+    if (!ssysEl) return null;
+
+    const name = ssysEl["@_name"];
+    const pos = ssysEl.pos || {};
+    const x = pos["@_x"];
+    const y = pos["@_y"];
+
+    const sys = new System(name, x, y);
+
+    // Spobs
+    const spobNodes = ssysEl.spobs?.spob;
+    if (spobNodes) {
+        const list = Array.isArray(spobNodes) ? spobNodes : [spobNodes];
+        for (const node of list) {
+            const nameText = typeof node === "string" ? node : node["#text"] || node;
+            if (spobs[nameText]) sys.addSpob(spobs[nameText]);
+        }
+    }
+
+    // Jumps
+    const jumpNodes = ssysEl.jumps?.jump;
+    if (jumpNodes) {
+        const list = Array.isArray(jumpNodes) ? jumpNodes : [jumpNodes];
+        for (const jump of list) {
+            const target = jump["@_target"];
+            const hidden = !!jump.hidden;
+            sys.addJump(new Jump(target, null, null, hidden));
+        }
+    }
 
     return sys;
 }

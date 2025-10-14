@@ -311,7 +311,7 @@ renderer.draw_model = function (origin, scale) {
 renderer.canvas_mouse_handler();
 
 window.addEventListener('DOMContentLoaded', (event) => {
-    //window.ipc_bridge.load_from_github(system_data_ready);
+    //window.ipc_bridge.load_from_github((model) => {
     window.ipc_bridge.load_from_path('', (model) => {
         renderer.update_model(model);
 
