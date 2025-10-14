@@ -80,12 +80,8 @@ minimap.draw_model = function (origin, scale) {
 
     const system = this.context.system;
     const canvas = this.canvas;
-    // Label the map
-    const color_text = "white";
-    this.canvas.ctx.font = '24px sans';
-    this.canvas.ctx.fillStyle = color_text;
-    this.canvas.ctx.fillText(system.name, 5, 29);
 
+    const color_text = "white";
     const color_refuel = "yellow";
     const color_outfitter = "orange";
     const color_shipyard = "green";
@@ -161,6 +157,14 @@ minimap.draw_model = function (origin, scale) {
         canvas.label_circle(circle, jump.target, color_text);
         console.log("Drawing jump", jump.target, "at", jump.x, jump.y);
     }
+
+    // Draw the system name in screen coordinates (not affected by pan/zoom)
+    this.canvas.ctx.save();
+    this.canvas.ctx.setTransform(1, 0, 0, 1, 0, 0);
+    this.canvas.ctx.font = '24px sans';
+    this.canvas.ctx.fillStyle = color_text;
+    this.canvas.ctx.fillText(system.name, 5, 29);
+    this.canvas.ctx.restore();
 
     // Create a button element that shows in the upper right to close the minimap
     const button = document.createElement("button");
