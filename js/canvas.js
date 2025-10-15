@@ -383,6 +383,10 @@ class CanvasRenderer {
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = {
         Point,
-        flip_y
+        Circle,
+        flip_y,
+        degrees: Math.degrees,
+        radians: Math.radians,
+        rotate
     };
 }
