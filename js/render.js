@@ -2,27 +2,7 @@
 // The main UI logic
 // Runs in sandbox, uses the API defined in js for drawing to the canvas.
 //
-
-/**
- * Naev uses traditional Cartesian coordinates with the origin at the center,
- * while an HTML5 canvas has the origin at the upper left.
- *
- * Rather than try to completely re-center, this function keeps x coordinates
- * entirely untranslated (so half the map is off the screen to the left) and then
- * flips the y coordinate (so half the map is off the screen to the bottom).
- *
- * This places the origin at the lower-left corner.
- *
- * As a result, the default view will be more-or-less the upper-right quadrant of the
- * map, with the negative portions going off the screen to the left and bottom.
- *
- * @param {*} coords  x, y coordinates for the point to flip
- * @param {*} max     x, y coordinates for the max
- * @returns
- */
-function flip_y(coords, max) {
-    return new Point(coords.x, max.y - coords.y);
-}
+// Note: flip_y() is defined in canvas.js
 
 /**
  * Resize the canvas to its correct area within the window

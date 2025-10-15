@@ -39,10 +39,33 @@ class Point {
     x = 0;
     y = 0;
 
-    constructor(x, y) {
+    constructor(x = 0, y = 0) {
         this.x = x;
         this.y = y;
     }
+}
+
+/**
+ * Flip y-coordinates from Naev's Cartesian system to canvas coordinates.
+ *
+ * Naev uses traditional Cartesian coordinates with the origin at the center,
+ * while an HTML5 canvas has the origin at the upper left.
+ *
+ * Rather than try to completely re-center, this function keeps x coordinates
+ * entirely untranslated (so half the map is off the screen to the left) and then
+ * flips the y coordinate (so half the map is off the screen to the bottom).
+ *
+ * This places the origin at the lower-left corner.
+ *
+ * As a result, the default view will be more-or-less the upper-right quadrant of the
+ * map, with the negative portions going off the screen to the left and bottom.
+ *
+ * @param {Point} coords  x, y coordinates for the point to flip
+ * @param {Point} max     x, y coordinates for the max (typically canvas dimensions)
+ * @returns {Point} Transformed coordinates
+ */
+function flip_y(coords, max) {
+    return new Point(coords.x, max.y - coords.y);
 }
 
 /**********************************************************
@@ -354,4 +377,12 @@ class CanvasRenderer {
             passive: false
         });
     }
+}
+
+// Export for Node.js testing (module.exports is undefined in browser)
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = {
+        Point,
+        flip_y
+    };
 }
