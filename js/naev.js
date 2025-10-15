@@ -304,7 +304,7 @@ function process_ssys(xdoc, spobs) {
         const list = Array.isArray(jumpNodes) ? jumpNodes : [jumpNodes];
         for (const jump of list) {
             const target = jump["@_target"];
-            const hidden = !!jump.hide;
+            const hidden = jump.hasOwnProperty("hidden");
             const autopos = jump.hasOwnProperty("autopos");
 
             // Get position if explicitly defined

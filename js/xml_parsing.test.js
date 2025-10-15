@@ -96,10 +96,11 @@ describe('process_ssys', () => {
         const jump_targets = sys.jumps.map(j => j.target).sort();
         expect(jump_targets).toEqual(['Midoros', 'Polaris', 'Tide']);
 
-        // All jumps should be autopos and hidden
+        // All jumps should be autopos
+        // Note: these jumps have <hide> tags but NOT <hidden/> tags
         sys.jumps.forEach(jump => {
             expect(jump.autopos).toBe(true);
-            expect(jump.hidden).toBe(true);
+            expect(jump.hidden).toBe(false);
         });
     });
 
@@ -189,5 +190,43 @@ describe('process_ssys', () => {
         expect(sys.jumps[0].target).toBe('OtherSystem');
         expect(sys.jumps[0].x).toBe(100);
         expect(sys.jumps[0].y).toBe(200);
+    });
+
+    test('correctly distinguishes between hidden and hide tags', () => {
+        const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<ssys name="Test System">
+    <pos x="0.0" y="0.0"/>
+    <jumps>
+        <jump target="VisibleJump">
+            <autopos/>
+            <hide>1.0</hide>
+        </jump>
+        <jump target="HiddenJump">
+            <autopos/>
+            <hidden/>
+        </jump>
+        <jump target="BothJump">
+            <autopos/>
+            <hidden/>
+            <hide>2.0</hide>
+        </jump>
+    </jumps>
+</ssys>`;
+        const xdoc = parser.parse(xml);
+        const sys = process_ssys(xdoc, {});
+
+        expect(sys.jumps).toHaveLength(3);
+
+        // Jump with only <hide> should NOT be hidden
+        const visible = sys.jumps.find(j => j.target === 'VisibleJump');
+        expect(visible.hidden).toBe(false);
+
+        // Jump with <hidden/> should be hidden
+        const hidden = sys.jumps.find(j => j.target === 'HiddenJump');
+        expect(hidden.hidden).toBe(true);
+
+        // Jump with both should be hidden
+        const both = sys.jumps.find(j => j.target === 'BothJump');
+        expect(both.hidden).toBe(true);
     });
 });
