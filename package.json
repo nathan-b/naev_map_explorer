@@ -4,13 +4,14 @@
     "description": "Interactive map explorer for the open-source game Naev",
     "main": "js/index.js",
     "scripts": {
-        "test": "echo \"Error: no test specified\" && exit 1",
+        "test": "jest",
         "start": "electron ."
     },
     "author": "Nathan Baker",
     "license": "MIT",
     "devDependencies": {
-        "electron": "^26.1.0"
+        "electron": "^26.1.0",
+        "jest": "^30.2.0"
     },
     "dependencies": {
         "fast-xml-parser": "^5.3.0",

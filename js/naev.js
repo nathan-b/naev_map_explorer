@@ -258,8 +258,8 @@ function process_spob(xdoc) {
 
     // Collect services (could be object or array)
     const services = [];
-    if (spobEl.services) {
-        const serviceNodes = spobEl.services;
+    if (spobEl.general?.services) {
+        const serviceNodes = spobEl.general.services;
         for (const key of Object.keys(serviceNodes)) {
             if (key !== "@_") services.push(key);
         }
@@ -305,7 +305,7 @@ function process_ssys(xdoc, spobs) {
         const list = Array.isArray(jumpNodes) ? jumpNodes : [jumpNodes];
         for (const jump of list) {
             const target = jump["@_target"];
-            const hidden = !!jump.hidden;
+            const hidden = !!jump.hide;
             const autopos = jump.hasOwnProperty("autopos");
 
             // Get position if explicitly defined
@@ -392,6 +392,10 @@ class System {
 module.exports = {
     read_systems_from_disk,
     read_systems_from_github,
+    reconstruct_jump_positions,
+    process_spob,
+    process_ssys,
     Spob,
-    System
+    System,
+    Jump
 };
