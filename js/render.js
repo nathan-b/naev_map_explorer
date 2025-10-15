@@ -37,6 +37,9 @@ function hide_minimap() {
         minimapCloseButton.remove();
         minimapCloseButton = null;
     }
+    // Reset zoom and scroll to defaults
+    minimap.scroll_offset = new Point(0, 0);
+    minimap.scale = 1.0;
 }
 
 // Set up the canvas
