@@ -88,6 +88,11 @@ minimap.update_model = function (system, all_systems) {
 }
 
 minimap.draw_model = function (origin, scale) {
+    // Don't render if no data has been loaded yet
+    if (!this.context || !this.context.system) {
+        return;
+    }
+
     this.canvas.clear();
     const canvas_max = new Point(this.canvas.canvas.width, this.canvas.canvas.height);
     this.canvas.set_origin_and_scale(origin, scale);
@@ -253,6 +258,11 @@ renderer.on_click = function (event) {
  * Draw the stored system map (saved in update_model)
  */
 renderer.draw_model = function (origin, scale) {
+    // Don't render if no data has been loaded yet
+    if (!this.context || !this.context.systems) {
+        return;
+    }
+
     this.canvas.clear();
     set_canvas_size();
     this.canvas.set_origin_and_scale(origin, scale);
