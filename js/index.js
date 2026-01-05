@@ -1,7 +1,8 @@
 const {
     app,
     BrowserWindow,
-    ipcMain
+    ipcMain,
+    dialog
 } = require('electron');
 const path = require('path');
 const gx = require("./github.js");
@@ -37,13 +38,23 @@ function getWindow() {
 }
 
 // Message handlers
-ipcMain.handle('load_from_path', async (event, path) => {
-    /*[file_path] = dialog.showOpenDialogSync(getWindow(), {
-        title: 'Select your Naev directory',
-        properties: ['openFile']
-    });*/
+ipcMain.handle('load_from_path', async (event, naev_path) => {
+    // If path is empty, show dialog to select directory
+    if (!naev_path || naev_path.trim() === '') {
+        const result = dialog.showOpenDialogSync(getWindow(), {
+            title: 'Select your Naev data directory (containing spob/ and ssys/ folders)',
+            properties: ['openDirectory']
+        });
+        if (result && result.length > 0) {
+            naev_path = result[0];
+        } else {
+            // User cancelled the dialog
+            return null;
+        }
+    }
+
     return new Promise((resolve, reject) => {
-        naev.read_systems_from_disk(path, (sys_map) => {
+        naev.read_systems_from_disk(naev_path, (sys_map) => {
             resolve(JSON.stringify(sys_map));
         });
     });
@@ -55,6 +66,10 @@ ipcMain.handle('load_from_github', async (event) => {
             resolve(JSON.stringify(sys_map));
         });
     });
+});
+
+ipcMain.handle('get_autodetected_path', async (event) => {
+    return naev.get_game_data_dir();
 });
 
 // Entrypoint

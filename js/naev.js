@@ -391,6 +391,7 @@ class System {
 module.exports = {
     read_systems_from_disk,
     read_systems_from_github,
+    get_game_data_dir,
     reconstruct_jump_positions,
     process_spob,
     process_ssys,

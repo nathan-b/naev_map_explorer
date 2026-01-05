@@ -306,14 +306,39 @@ renderer.draw_model = function (origin, scale) {
 // Set up mouse interactivity
 renderer.canvas_mouse_handler();
 
-window.addEventListener('DOMContentLoaded', (event) => {
-    //window.ipc_bridge.load_from_github((model) => {
-    window.ipc_bridge.load_from_path('', (model) => {
-        renderer.update_model(model);
+window.addEventListener('DOMContentLoaded', async (event) => {
+    // Set up button event listeners
+    const controls = document.getElementById('controls');
+    const buttons = controls.querySelectorAll('button');
+    const path_input = document.getElementById('naev_path');
 
-        // Add a resize listener so the canvas can correctly size to the window
-        window.addEventListener('resize', () => {
-            renderer.draw_model(renderer.scroll_offset, renderer.scale);
+    // Populate the path input with auto-detected path
+    const autodetected_path = await window.ipc_bridge.get_autodetected_path();
+    if (autodetected_path) {
+        path_input.value = autodetected_path;
+    }
+
+    // "Load from local path" button
+    buttons[0].addEventListener('click', () => {
+        const path = path_input.value || '';
+        console.log('Loading from path:', path);
+        window.ipc_bridge.load_from_path(path, (model) => {
+            if (model) {
+                renderer.update_model(model);
+            }
         });
+    });
+
+    // "Load data from GitHub" button
+    buttons[1].addEventListener('click', () => {
+        console.log('Loading from GitHub');
+        window.ipc_bridge.load_from_github((model) => {
+            renderer.update_model(model);
+        });
+    });
+
+    // Add a resize listener so the canvas can correctly size to the window
+    window.addEventListener('resize', () => {
+        renderer.draw_model(renderer.scroll_offset, renderer.scale);
     });
 });

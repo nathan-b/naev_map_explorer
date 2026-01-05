@@ -14,5 +14,8 @@ contextBridge.exposeInMainWorld('ipc_bridge', {
         ipcRenderer.invoke('load_from_github').then((result) => {
             callback(result);
         });
+    },
+    get_autodetected_path: () => {
+        return ipcRenderer.invoke('get_autodetected_path');
     }
 });
