@@ -24,7 +24,6 @@ function createWindow() {
     });
 
     mainwin.loadFile('index.html');
-    mainwin.webContents.openDevTools();
 }
 
 /**

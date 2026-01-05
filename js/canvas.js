@@ -97,51 +97,38 @@ class Circle {
      *           end points of the connecting line
      */
     connecting_pts(other) {
-        let p1, p2;
+        // Calculate the vector from this circle to the other
+        const dx = other.x - this.x;
+        const dy = other.y - this.y;
 
-        // We want p1 to be the leftmost circle
-        if (this.x < other.x) {
-            p1 = {
-                ...this
-            };
-            p2 = {
-                ...other
-            };
-        } else {
-            p1 = {
-                ...other
-            };
-            p2 = {
-                ...this
-            };
+        // Calculate the distance between circle centers
+        const distance = Math.sqrt(dx * dx + dy * dy);
+
+        // If circles are at the same position, return the centers
+        if (distance === 0) {
+            return [new Point(this.x, this.y), new Point(other.x, other.y)];
         }
 
-        // Calculate the x and y distances between the center points of the circles
-        let dx = Math.abs(p1.x - p2.x);
-        let dy = Math.abs(p1.y - p2.y);
+        // Normalize the direction vector
+        const norm_dx = dx / distance;
+        const norm_dy = dy / distance;
 
-        // In a right triangle, the arctan of the ratio (perpendicular / base) provides
-        // the value of the corresponding angle between the base and the hypotenuse.
-        let alpha = Math.degrees(Math.atan(dy / dx));
-        let beta = 90 - alpha;
+        // Account for the stroke width (lineWidth = 2, so half is 1 pixel)
+        // The visual edge is at radius + 1
+        const stroke_offset = 1;
 
-        // Need to scale the resulting line by the radius
-        return [
-            rotate({
-                    ...p1,
-                    x: p1.x + p1.r
-                },
-                p1,
-                (p2.y < p1.y ? 360 : alpha * 2) - alpha
-            ),
-            rotate({
-                    ...p2,
-                    x: p2.x + p2.r
-                },
-                p2,
-                (p2.y > p1.y ? 270 - 2 * beta : 90) + beta
-            )
-        ];
+        // Calculate the points on the visual edge of each circle
+        const start_point = new Point(
+            this.x + (this.r + stroke_offset) * norm_dx,
+            this.y + (this.r + stroke_offset) * norm_dy
+        );
+
+        const end_point = new Point(
+            other.x - (other.r + stroke_offset) * norm_dx,
+            other.y - (other.r + stroke_offset) * norm_dy
+        );
+
+        return [start_point, end_point];
     }
 }
 
