@@ -56,10 +56,12 @@ let minimapCloseButton = null;
 /**
  * Update the minimap with the given system.
  * @param {*} system  A system object
+ * @param {*} all_systems  All systems data (for looking up jump targets)
  */
-minimap.update_model = function (system) {
+minimap.update_model = function (system, all_systems) {
     this.context = {
-        'system': system
+        'system': system,
+        'all_systems': all_systems
     }
     this.draw_model(this.scroll_offset, this.scale);
 
@@ -102,12 +104,27 @@ minimap.draw_model = function (origin, scale) {
     const hidden_jump = "red";
     const base_radius = 6;
 
-    // Iterate once through the spobs to get a bounding box
+    // Iterate once through the spobs and jumps to get a bounding box
     const padding = 5000;
     let pmin = new Point(0, 0);
     let pmax = new Point(0, 0);
     for (const spob of system.spobs) {
         const coords = flip_y(new Point(spob.x, spob.y), canvas_max);
+        if (coords.x < pmin.x) {
+            pmin.x = coords.x;
+        }
+        if (coords.y < pmin.y) {
+            pmin.y = coords.y;
+        }
+        if (coords.x > pmax.x) {
+            pmax.x = coords.x;
+        }
+        if (coords.y > pmax.y) {
+            pmax.y = coords.y;
+        }
+    }
+    for (const jump of system.jumps) {
+        const coords = flip_y(new Point(jump.x, jump.y), canvas_max);
         if (coords.x < pmin.x) {
             pmin.x = coords.x;
         }
@@ -156,17 +173,29 @@ minimap.draw_model = function (origin, scale) {
     }
 
     // Draw the jumps
+    const all_systems = this.context.all_systems;
     for (const jump of system.jumps) {
         let color = normal_jump;
         if (jump.hidden) {
             color = hidden_jump;
         }
 
-        // Draw the jump
+        // Draw the jump gate as a triangle pointing toward the target system
         const coords = translate(new Point(jump.x, jump.y));
-        const circle = new Circle(coords.x, coords.y, base_radius);
-        const circle2d = canvas.draw_circle(circle, color);
-        canvas.label_circle(circle, jump.target, color_text);
+
+        // Calculate angle from current system to target system
+        // Note: We need to account for the y-axis flip in canvas coordinates
+        let angle = 0;
+        if (all_systems && all_systems[jump.target]) {
+            const target_sys = all_systems[jump.target];
+            const dx = target_sys.x - system.x;
+            const dy = target_sys.y - system.y;
+            // Negate dy to account for flip_y transformation
+            angle = Math.atan2(-dy, dx);
+        }
+
+        canvas.draw_triangle(coords, base_radius, angle, color);
+        canvas.label_circle(new Circle(coords.x, coords.y, base_radius), jump.target, color_text);
         console.log("Drawing jump", jump.target, "at", jump.x, jump.y);
     }
 
@@ -211,7 +240,7 @@ renderer.on_click = function (event) {
         this.context.hitbox_cache.forEach(function (element) {
             const circle2d = element.circle;
             if (renderer.canvas.ctx.isPointInPath(circle2d, event.offsetX, event.offsetY)) {
-                minimap.update_model(element.system);
+                minimap.update_model(element.system, renderer.context.systems);
                 show_minimap();
                 console.log("User clicked", element.system.name);
                 return;

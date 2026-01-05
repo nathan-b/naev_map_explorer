@@ -207,6 +207,55 @@ class Canvas {
     }
 
     /**
+     * Draw a triangle on the canvas pointing in a specific direction.
+     *
+     * @param {*} position  Point object with x, y coordinates for the triangle center
+     * @param {*} size      Size of the triangle (distance from center to vertex)
+     * @param {*} angle     Angle in radians the triangle should point (0 = right, PI/2 = up)
+     * @param {*} color     Color of the triangle to draw
+     * @param {*} fill      Should the triangle be filled in?
+     *
+     * @returns  Hitbox for the triangle (Path2D object)
+     */
+    draw_triangle(position, size, angle, color, fill = false) {
+        const triangle = new Path2D();
+
+        // Calculate the three vertices of the triangle
+        // Vertex 1 (point): straight ahead in the direction of angle
+        const v1_x = position.x + size * Math.cos(angle);
+        const v1_y = position.y + size * Math.sin(angle);
+
+        // Vertex 2: 120 degrees counter-clockwise from point
+        const v2_x = position.x + size * Math.cos(angle + Math.PI * 2 / 3);
+        const v2_y = position.y + size * Math.sin(angle + Math.PI * 2 / 3);
+
+        // Vertex 3: 120 degrees clockwise from point
+        const v3_x = position.x + size * Math.cos(angle - Math.PI * 2 / 3);
+        const v3_y = position.y + size * Math.sin(angle - Math.PI * 2 / 3);
+
+        this.ctx.beginPath();
+        this.ctx.strokeStyle = color;
+        this.ctx.fillStyle = color;
+        this.ctx.lineWidth = 2;
+
+        triangle.moveTo(v1_x, v1_y);
+        triangle.lineTo(v2_x, v2_y);
+        triangle.lineTo(v3_x, v3_y);
+        triangle.closePath();
+
+        if (fill) {
+            this.ctx.fill(triangle);
+        } else {
+            this.ctx.stroke(triangle);
+        }
+
+        // Create a circular hitbox for simplicity
+        const hitbox = new Path2D();
+        hitbox.arc(position.x, position.y, size, 0, Math.PI * 2);
+        return hitbox;
+    }
+
+    /**
      * Draw a line on the canvas.
      *
      * @param {*} start   Starting coordinates (.x and .y fields)
