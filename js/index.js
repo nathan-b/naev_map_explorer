@@ -20,7 +20,10 @@ function createWindow() {
         width: 1200,
         height: 1300,
         webPreferences: {
-            preload: path.join(__dirname, 'preload.js')
+            preload: path.join(__dirname, 'preload.js'),
+            sandbox: true,
+            nodeIntegration: false,
+            contextIsolation: true
         }
     });
 
