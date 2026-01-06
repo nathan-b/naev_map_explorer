@@ -57,17 +57,33 @@ ipcMain.handle('load_from_path', async (event, naev_path) => {
     }
 
     return new Promise((resolve, reject) => {
-        naev.read_systems_from_disk(naev_path, (sys_map) => {
-            resolve(JSON.stringify(sys_map));
-        });
+        try {
+            naev.read_systems_from_disk(naev_path, (sys_map) => {
+                if (sys_map && Object.keys(sys_map).length > 0) {
+                    resolve(JSON.stringify(sys_map));
+                } else {
+                    reject(new Error('No systems loaded from path'));
+                }
+            });
+        } catch (error) {
+            reject(error);
+        }
     });
 });
 
 ipcMain.handle('load_from_github', async (event) => {
     return new Promise((resolve, reject) => {
-        naev.read_systems_from_github((sys_map) => {
-            resolve(JSON.stringify(sys_map));
-        });
+        try {
+            naev.read_systems_from_github((sys_map) => {
+                if (sys_map && Object.keys(sys_map).length > 0) {
+                    resolve(JSON.stringify(sys_map));
+                } else {
+                    reject(new Error('No systems loaded from GitHub'));
+                }
+            });
+        } catch (error) {
+            reject(error);
+        }
     });
 });
 

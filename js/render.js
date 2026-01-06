@@ -68,7 +68,7 @@ minimap.update_model = function (system, all_systems) {
     // Create the close button if it doesn't exist
     if (!minimapCloseButton) {
         minimapCloseButton = document.createElement("button");
-        minimapCloseButton.innerHTML = "X";
+        minimapCloseButton.textContent = "X";
         minimapCloseButton.style.position = "absolute";
         minimapCloseButton.style.top = "10px";
         minimapCloseButton.style.right = "10px";
@@ -360,19 +360,33 @@ window.addEventListener('DOMContentLoaded', async (event) => {
     // "Load from local path" button
     buttons[0].addEventListener('click', () => {
         const path = path_input.value || '';
+        const status_elem = document.getElementById('statustext');
         console.log('Loading from path:', path);
+        status_elem.textContent = 'Loading from local path...';
         window.ipc_bridge.load_from_path(path, (model) => {
             if (model) {
                 renderer.update_model(model);
+                status_elem.textContent = 'Successfully loaded from local path';
+            } else {
+                status_elem.textContent = 'Failed to load from local path. Check the console for errors.';
+                console.error('Failed to load from path:', path);
             }
         });
     });
 
     // "Load data from GitHub" button
     buttons[1].addEventListener('click', () => {
+        const status_elem = document.getElementById('statustext');
         console.log('Loading from GitHub');
+        status_elem.textContent = 'Loading from GitHub...';
         window.ipc_bridge.load_from_github((model) => {
-            renderer.update_model(model);
+            if (model) {
+                renderer.update_model(model);
+                status_elem.textContent = 'Successfully loaded from GitHub';
+            } else {
+                status_elem.textContent = 'Failed to load from GitHub. Check your internet connection and console for errors.';
+                console.error('Failed to load from GitHub');
+            }
         });
     });
 

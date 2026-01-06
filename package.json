@@ -10,7 +10,7 @@
     "author": "Nathan Baker",
     "license": "MIT",
     "devDependencies": {
-        "electron": "^26.1.0",
+        "electron": "^39.0.0",
         "jest": "^30.2.0"
     },
     "dependencies": {
