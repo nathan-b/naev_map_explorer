@@ -10,6 +10,7 @@
     "author": "Nathan Baker",
     "license": "MIT",
     "devDependencies": {
+        "baseline-browser-mapping": "^2.9.11",
         "electron": "^39.0.0",
         "jest": "^30.2.0"
     },

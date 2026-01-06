@@ -415,11 +415,11 @@ describe('Circle.connecting_pts', () => {
         expect(p1.y).toBeCloseTo(0, 1);
         expect(p2.y).toBeCloseTo(0, 1);
 
-        // x coordinates should be at circle edges (radius away from center)
-        // p1 should be on right edge of left circle (at radius)
-        expect(p1.x).toBeCloseTo(10, 1);
-        // p2 should be on left edge of right circle (100 - radius)
-        expect(p2.x).toBeCloseTo(90, 1);
+        // x coordinates should be at circle edges (radius + stroke_offset away from center)
+        // p1 should be on right edge of left circle (at radius + 1 for stroke)
+        expect(p1.x).toBeCloseTo(11, 1);
+        // p2 should be on left edge of right circle (100 - radius - 1 for stroke)
+        expect(p2.x).toBeCloseTo(89, 1);
     });
 
     test('works when circles are vertically stacked', () => {
@@ -444,28 +444,29 @@ describe('Circle.connecting_pts', () => {
         const [p1, p2] = c1.connecting_pts(c2);
 
         // Points should be on the line connecting the centers
-        // Distance from p1 to c1 center should be approximately the radius
+        // Distance from p1 to c1 center should be approximately radius + stroke_offset
         const dist1 = Math.sqrt(Math.pow(p1.x - 0, 2) + Math.pow(p1.y - 0, 2));
-        expect(dist1).toBeCloseTo(10, 1);
+        expect(dist1).toBeCloseTo(11, 1);
 
-        // Distance from p2 to c2 center should be approximately the radius
+        // Distance from p2 to c2 center should be approximately radius + stroke_offset
         const dist2 = Math.sqrt(Math.pow(p2.x - 100, 2) + Math.pow(p2.y - 100, 2));
-        expect(dist2).toBeCloseTo(10, 1);
+        expect(dist2).toBeCloseTo(11, 1);
     });
 
-    test('connecting_pts always returns leftmost circle first', () => {
+    test('connecting_pts returns points from caller to other circle', () => {
         const c1 = new Circle(0, 0, 10);
         const c2 = new Circle(100, 50, 15);
 
         const [p1, p2] = c1.connecting_pts(c2);
         const [p1_rev, p2_rev] = c2.connecting_pts(c1);
 
-        // Regardless of call order, points should be the same
-        // because function always orders left-to-right
-        expect(p1.x).toBeCloseTo(p1_rev.x, 1);
-        expect(p1.y).toBeCloseTo(p1_rev.y, 1);
-        expect(p2.x).toBeCloseTo(p2_rev.x, 1);
-        expect(p2.y).toBeCloseTo(p2_rev.y, 1);
+        // When calling c1.connecting_pts(c2), p1 should be near c1 and p2 near c2
+        // When calling c2.connecting_pts(c1), p1_rev should be near c2 and p2_rev near c1
+        // So p1 should match p2_rev, and p2 should match p1_rev
+        expect(p1.x).toBeCloseTo(p2_rev.x, 1);
+        expect(p1.y).toBeCloseTo(p2_rev.y, 1);
+        expect(p2.x).toBeCloseTo(p1_rev.x, 1);
+        expect(p2.y).toBeCloseTo(p1_rev.y, 1);
     });
 
     test('handles same-sized circles', () => {
@@ -474,12 +475,12 @@ describe('Circle.connecting_pts', () => {
 
         const [p1, p2] = c1.connecting_pts(c2);
 
-        // Both points should be at radius distance from their respective centers
+        // Both points should be at radius + stroke_offset distance from their respective centers
         const dist1 = Math.sqrt(Math.pow(p1.x, 2) + Math.pow(p1.y, 2));
         const dist2 = Math.sqrt(Math.pow(p2.x - 80, 2) + Math.pow(p2.y - 60, 2));
 
-        expect(dist1).toBeCloseTo(20, 1);
-        expect(dist2).toBeCloseTo(20, 1);
+        expect(dist1).toBeCloseTo(21, 1);
+        expect(dist2).toBeCloseTo(21, 1);
     });
 
     test('handles circles with different radii', () => {
@@ -488,12 +489,12 @@ describe('Circle.connecting_pts', () => {
 
         const [p1, p2] = c1.connecting_pts(c2);
 
-        // Point 1 should be 5 units from origin (radius of c1)
+        // Point 1 should be radius + stroke_offset from origin (5 + 1)
         const dist1 = Math.sqrt(Math.pow(p1.x, 2) + Math.pow(p1.y, 2));
-        expect(dist1).toBeCloseTo(5, 1);
+        expect(dist1).toBeCloseTo(6, 1);
 
-        // Point 2 should be 30 units from (100, 0) (radius of c2)
+        // Point 2 should be radius + stroke_offset from (100, 0) (30 + 1)
         const dist2 = Math.sqrt(Math.pow(p2.x - 100, 2) + Math.pow(p2.y, 2));
-        expect(dist2).toBeCloseTo(30, 1);
+        expect(dist2).toBeCloseTo(31, 1);
     });
 });
