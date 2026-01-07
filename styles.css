@@ -5,21 +5,40 @@ html {
 body {
     margin: 0;
     font-family: sans-serif;
+    overflow: hidden;
 }
 
 canvas {
     background-color: black;
+    display: block;
+}
+
+#map {
+    display: block;
 }
 
 #minimap {
     position: absolute;
     right: 10px;
+    top: 10px;
     visibility: hidden;
+    pointer-events: none;
+}
+
+#minimap[style*="visibility: visible"] {
+    pointer-events: auto;
 }
 
 .controls {
     display: flex;
     justify-content: space-between;
+}
+
+hr {
+    margin: 5px 0;
+}
+
+.status {
 }
 
 .input_group {

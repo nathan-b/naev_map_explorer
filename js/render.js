@@ -9,9 +9,24 @@
  */
 function set_canvas_size() {
     const canvas = window.document.getElementById('map');
-    const celem = window.document.getElementById('controls');
+    const controls = window.document.getElementById('controls');
+    const status = window.document.getElementById('status');
+    const hr_elements = window.document.querySelectorAll('hr');
+
     const width = window.innerWidth - 50;
-    const height = window.innerHeight - celem.clientHeight;
+
+    // Force layout calculation to ensure accurate measurements
+    controls.getBoundingClientRect();
+    status.getBoundingClientRect();
+
+    let reserved_height = controls.offsetHeight + status.offsetHeight;
+
+    // Add height of all hr elements
+    hr_elements.forEach(hr => {
+        reserved_height += hr.offsetHeight;
+    });
+
+    const height = window.innerHeight - reserved_height - 40; // Extra margin for spacing and safety
     if (canvas.width != width || canvas.height != height) {
         canvas.width = width;
         canvas.height = height;
@@ -240,6 +255,12 @@ renderer.update_model = function (sys_json) {
  */
 renderer.on_click = function (event) {
     const renderer = this;
+    console.log("Click detected at offsetX:", event.offsetX, "offsetY:", event.offsetY);
+    console.log("Canvas size:", renderer.canvas.canvas.width, "x", renderer.canvas.canvas.height);
+    const rect = renderer.canvas.canvas.getBoundingClientRect();
+    console.log("Canvas display size:", rect.width, "x", rect.height);
+    console.log("Hitbox cache length:", this.context.hitbox_cache ? this.context.hitbox_cache.length : 0);
+
     // Look through each of the stored hitboxes to see if we clicked on one
     if (this.context.hitbox_cache !== null) {
         this.context.hitbox_cache.forEach(function (element) {
