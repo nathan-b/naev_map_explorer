@@ -15,14 +15,28 @@
     <hr>
 
     <div id="controls" class="controls">
-        <div id="input_group">
-            <input type="text" size="60" id="naev_path">
-            <button type="button">Load from local path</button>
+        <div id="loading_ui">
+            <div id="input_group">
+                <input type="text" size="60" id="naev_path">
+                <button type="button">Load from local path</button>
+            </div>
+            <div id="input_group">
+                <button type="button">Load data from GitHub</button>
+            </div>
+            <div id="input_group" class="naev_tools">
+            </div>
         </div>
-        <div id="input_group">
-            <button type="button">Load data from GitHub</button>
-        </div>
-        <div id="input_group" class="naev_tools">
+        <div id="search_ui">
+            <div id="input_group">
+                <button type="button" id="load_new_data_btn">Load new data</button>
+            </div>
+            <div id="input_group">
+                <input type="text" size="60" id="search_box">
+                <button type="button" id="search_btn">Search</button>
+                <button type="button" id="clear_btn">Clear</button>
+            </div>
+            <div id="input_group" class="naev_tools">
+            </div>
         </div>
     </div>
     <div id="status" class="status">

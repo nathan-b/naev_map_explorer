@@ -57,6 +57,26 @@ function hide_minimap() {
     minimap.scale = 1.0;
 }
 
+/**
+ * Show the search UI and hide the loading UI
+ */
+function show_search_ui() {
+    const loading_ui = window.document.getElementById('loading_ui');
+    const search_ui = window.document.getElementById('search_ui');
+    loading_ui.style.display = 'none';
+    search_ui.classList.add('visible');
+}
+
+/**
+ * Show the loading UI and hide the search UI
+ */
+function show_loading_ui() {
+    const loading_ui = window.document.getElementById('loading_ui');
+    const search_ui = window.document.getElementById('search_ui');
+    loading_ui.style.display = 'flex';
+    search_ui.classList.remove('visible');
+}
+
 // Set up the canvas
 const renderer = new CanvasRenderer(new Canvas('map'));
 const minimap = new CanvasRenderer(new Canvas('minimap'));
@@ -103,7 +123,7 @@ minimap.update_model = function (system, all_systems) {
 }
 
 minimap.draw_model = function (origin, scale) {
-    // Don't render if no data has been loaded yet
+    // Don't render if no data have been loaded yet
     if (!this.context || !this.context.system) {
         return;
     }
@@ -242,7 +262,8 @@ minimap.canvas_mouse_handler();
 renderer.update_model = function (sys_json) {
     this.context = {
         systems: JSON.parse(sys_json),
-        hitbox_cache: []
+        hitbox_cache: [],
+        search_text: ""
     };
     console.log("Updating", Object.keys(this.context.systems).length, "systems");
     this.draw_model(this.scroll_offset, this.scale);
@@ -255,12 +276,6 @@ renderer.update_model = function (sys_json) {
  */
 renderer.on_click = function (event) {
     const renderer = this;
-    console.log("Click detected at offsetX:", event.offsetX, "offsetY:", event.offsetY);
-    console.log("Canvas size:", renderer.canvas.canvas.width, "x", renderer.canvas.canvas.height);
-    const rect = renderer.canvas.canvas.getBoundingClientRect();
-    console.log("Canvas display size:", rect.width, "x", rect.height);
-    console.log("Hitbox cache length:", this.context.hitbox_cache ? this.context.hitbox_cache.length : 0);
-
     // Look through each of the stored hitboxes to see if we clicked on one
     if (this.context.hitbox_cache !== null) {
         this.context.hitbox_cache.forEach(function (element) {
@@ -276,10 +291,42 @@ renderer.on_click = function (event) {
 }
 
 /**
+ * Get the color palette for drawing a system and its jumps.
+ * @param {*} system The system object
+ * @param {boolean} matches_search Whether the system matches the current search
+ * @returns {object} Color palette with properties: color_sys, color_refuel, color_outfitter, color_shipyard, text_color, normal_jump, hidden_jump
+ */
+function get_colors(system, matches_search) {
+    if (matches_search) {
+        // Normal bright colors for matching systems
+        return {
+            color_sys: "yellow",
+            color_refuel: "yellow",
+            color_outfitter: "orange",
+            color_shipyard: "green",
+            text_color: "white",
+            normal_jump: "blue",
+            hidden_jump: "red"
+        };
+    } else {
+        // Dimmed colors for non-matching systems
+        return {
+            color_sys: "#333333",
+            color_refuel: "#333333",
+            color_outfitter: "#333333",
+            color_shipyard: "#333333",
+            text_color: "#555555",
+            normal_jump: "#222222",
+            hidden_jump: "#222222"
+        };
+    }
+}
+
+/**
  * Draw the stored system map (saved in update_model)
  */
 renderer.draw_model = function (origin, scale) {
-    // Don't render if no data has been loaded yet
+    // Don't render if no data have been loaded yet
     if (!this.context || !this.context.systems) {
         return;
     }
@@ -290,13 +337,6 @@ renderer.draw_model = function (origin, scale) {
 
     const canvas_max = new Point(this.canvas.canvas.width, this.canvas.canvas.height);
 
-    const color_sys = "yellow";
-    const color_refuel = "yellow";
-    const color_outfitter = "orange";
-    const color_shipyard = "green";
-    const text_color = "white";
-    const normal_jump = "blue";
-    const hidden_jump = "red";
     const base_radius = 6;
     const canvas = this.canvas;
     const context = this.context;
@@ -305,10 +345,18 @@ renderer.draw_model = function (origin, scale) {
     Object.keys(context.systems).forEach(function (key) {
         // Draw the system circle
         const sys = this[key];
+
+        // Determine if this system matches the search text
+        const matches_search = !context.search_text ||
+                              sys.name.toLowerCase().includes(context.search_text.toLowerCase());
+
+        // Get the appropriate color palette for this system
+        const colors = get_colors(sys, matches_search);
+
         const coords = flip_y(new Point(sys.x, sys.y), canvas_max);
         const circle = new Circle(coords.x, coords.y, base_radius);
-        const circle2d = canvas.draw_circle(circle, color_sys);
-        canvas.label_circle(circle, sys.name, text_color);
+        const circle2d = canvas.draw_circle(circle, colors.color_sys);
+        canvas.label_circle(circle, sys.name, colors.text_color);
         context.hitbox_cache.push({
             'circle': circle2d,
             'system': sys
@@ -334,11 +382,11 @@ renderer.draw_model = function (origin, scale) {
         }
         let inner_color = null;
         if (services.shipyard) {
-            inner_color = color_shipyard;
+            inner_color = colors.color_shipyard;
         } else if (services.outfitter) {
-            inner_color = color_outfitter;
+            inner_color = colors.color_outfitter;
         } else if (services.refuel) {
-            inner_color = color_refuel;
+            inner_color = colors.color_refuel;
         }
         if (inner_color !== null) {
             const inner = new Circle(coords.x, coords.y, base_radius - 1);
@@ -357,7 +405,7 @@ renderer.draw_model = function (origin, scale) {
                 target_coords.y,
                 base_radius
             );
-            const line_color = jump.hidden ? hidden_jump : normal_jump;
+            const line_color = jump.hidden ? colors.hidden_jump : colors.normal_jump;
             canvas.draw_connection(circle, target_circle, line_color);
         });
     }, context.systems);
@@ -388,6 +436,7 @@ window.addEventListener('DOMContentLoaded', async (event) => {
             if (model) {
                 renderer.update_model(model);
                 status_elem.textContent = 'Successfully loaded from local path';
+                show_search_ui();
             } else {
                 status_elem.textContent = 'Failed to load from local path. Check the console for errors.';
                 console.error('Failed to load from path:', path);
@@ -404,11 +453,48 @@ window.addEventListener('DOMContentLoaded', async (event) => {
             if (model) {
                 renderer.update_model(model);
                 status_elem.textContent = 'Successfully loaded from GitHub';
+                show_search_ui();
             } else {
                 status_elem.textContent = 'Failed to load from GitHub. Check your internet connection and console for errors.';
                 console.error('Failed to load from GitHub');
             }
         });
+    });
+
+    // "Load new data" button
+    const load_new_data_btn = document.getElementById('load_new_data_btn');
+    load_new_data_btn.addEventListener('click', () => {
+        show_loading_ui();
+    });
+
+    // "Search" button
+    const search_btn = document.getElementById('search_btn');
+    const search_box = document.getElementById('search_box');
+
+    const perform_search = () => {
+        if (renderer.context) {
+            renderer.context.search_text = search_box.value;
+            renderer.draw_model(renderer.scroll_offset, renderer.scale);
+        }
+    };
+
+    search_btn.addEventListener('click', perform_search);
+
+    // "Clear" button
+    const clear_btn = document.getElementById('clear_btn');
+    clear_btn.addEventListener('click', () => {
+        if (renderer.context) {
+            search_box.value = '';
+            renderer.context.search_text = '';
+            renderer.draw_model(renderer.scroll_offset, renderer.scale);
+        }
+    });
+
+    // Enter key in search box performs search
+    search_box.addEventListener('keypress', (event) => {
+        if (event.key === 'Enter') {
+            perform_search();
+        }
     });
 
     // Add a resize listener so the canvas can correctly size to the window

@@ -34,6 +34,22 @@ canvas {
     justify-content: space-between;
 }
 
+#loading_ui {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+}
+
+#search_ui {
+    display: none;
+    justify-content: space-between;
+    width: 100%;
+}
+
+#search_ui.visible {
+    display: flex;
+}
+
 hr {
     margin: 5px 0;
 }
