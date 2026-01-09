@@ -193,22 +193,30 @@ minimap.draw_model = function (origin, scale) {
 
     // Draw the spobs
     for (const spob of system.spobs) {
-        let color = "white";
-        if (spob.restricted) {
-            color = color_restricted;
-        } else if (spob.refuel) {
-            color = color_refuel;
-        } else if (spob.outfitter) {
-            color = color_outfitter;
-        } else if (spob.shipyard) {
-            color = color_shipyard;
-        }
-
-        // Draw the spob
         const coords = translate(new Point(spob.x, spob.y));
         console.log("Drawing spob", spob.name, "at", spob.x, spob.y, coords.x, coords.y);
+
+        // Draw outer circle (red if restricted, white otherwise)
         const circle = new Circle(coords.x, coords.y, base_radius);
-        const circle2d = canvas.draw_circle(circle, color);
+        const outer_color = spob.restricted ? color_restricted : "white";
+        const circle2d = canvas.draw_circle(circle, outer_color);
+
+        // Draw inner filled circle based on services (if not restricted)
+        if (!spob.restricted) {
+            let inner_color = null;
+            if (spob.shipyard) {
+                inner_color = color_shipyard;
+            } else if (spob.outfits) {
+                inner_color = color_outfitter;
+            } else if (spob.refuel) {
+                inner_color = color_refuel;
+            }
+            if (inner_color !== null) {
+                const inner = new Circle(coords.x, coords.y, base_radius - 1);
+                canvas.draw_circle(inner, inner_color, true);
+            }
+        }
+
         canvas.label_circle(circle, spob.name, color_text);
     }
 
