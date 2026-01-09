@@ -264,6 +264,13 @@ function process_spob(xdoc) {
     const x = pos["@_x"];
     const y = pos["@_y"];
 
+    // Filter out spobs with invalid coordinates
+    const parsed_x = parseFloat(x);
+    const parsed_y = parseFloat(y);
+    if (isNaN(parsed_x) || isNaN(parsed_y)) {
+        return null;
+    }
+
     // Collect services (could be object or array)
     const services = [];
     if (spobEl.general?.services) {
@@ -291,6 +298,13 @@ function process_ssys(xdoc, spobs) {
     const pos = ssysEl.pos || {};
     const x = pos["@_x"];
     const y = pos["@_y"];
+
+    // Filter out systems with invalid coordinates
+    const parsed_x = parseFloat(x);
+    const parsed_y = parseFloat(y);
+    if (isNaN(parsed_x) || isNaN(parsed_y)) {
+        return null;
+    }
 
     // Get system radius (default to 10000 if not specified)
     const radius = ssysEl.general?.radius ? parseFloat(ssysEl.general.radius) : 10000;

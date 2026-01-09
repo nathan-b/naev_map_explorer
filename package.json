@@ -37,17 +37,9 @@
         },
         "files": [
             "js/**/*",
-            "data/**/*",
             "index.html",
             "styles.css",
             "package.json"
-        ],
-        "extraResources": [
-            {
-                "from": "data",
-                "to": "data",
-                "filter": ["**/*"]
-            }
         ],
         "win": {
             "target": [
