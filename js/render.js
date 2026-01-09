@@ -355,8 +355,10 @@ renderer.draw_model = function (origin, scale) {
         const sys = this[key];
 
         // Determine if this system matches the search text
+        // Check both system name and spob names within the system
         const matches_search = !context.search_text ||
-                              sys.name.toLowerCase().includes(context.search_text.toLowerCase());
+                              sys.name.toLowerCase().includes(context.search_text.toLowerCase()) ||
+                              sys.spobs.some(spob => spob.name.toLowerCase().includes(context.search_text.toLowerCase()));
 
         // Get the appropriate color palette for this system
         const colors = get_colors(sys, matches_search);
