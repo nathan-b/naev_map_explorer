@@ -14,8 +14,8 @@ pids
 *.seed
 *.pid.lock
 
-# Local data for testing
-data/*
-data/
+# Build output
+dist/
+out/
 
 node_modules

@@ -3,9 +3,18 @@ const fss = require("fs");
 const fs = require("fs").promises;
 const os = require("os");
 const path = require("path");
-const {
-    performance
-} = require("perf_hooks");
+
+// Use perf_hooks if available, fallback to Date for packaged app
+let performance;
+try {
+    performance = require("perf_hooks").performance;
+} catch (e) {
+    // Fallback for packaged environments where perf_hooks might not be available
+    performance = {
+        now: () => Date.now()
+    };
+}
+
 const {
     XMLParser
 } = require("fast-xml-parser");
