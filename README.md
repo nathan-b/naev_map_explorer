@@ -2,6 +2,50 @@
 
 This project is a simple map explorer for the space exploration game Naev. It uses the game's actual data and so is always up-to-date.
 
+Please note that this project is unaffiliated with the Naev open-source game, other than the developer (i.e. me) thinking it's pretty neat and you should probably play it. Though you likely already do and that's why you're here.
+
+## Installing
+
+### Download
+
+Download the latest release for your platform from the [Releases page](https://github.com/nathan-b/naev_map_explorer/releases/latest). Make sure you download the image for the correct platform and architecture.
+
+#### Determining Your Architecture
+
+**Linux**
+
+```bash
+uname -m
+# x86_64 or amd64 → Download x64 version
+# aarch64 or arm64 → Download arm64 version
+```
+
+**Windows**
+
+Check: Settings → System → About → System type
+
+- **Most PCs:** x64 (Intel/AMD processors)
+- **ARM Windows:** arm64 (Microsoft Surface Pro X, ARM-based laptops)
+
+**macOS**
+
+Check: Apple menu → About This Mac → Chip
+
+- **Intel Macs** (2020 and earlier): x64
+- **Apple Silicon** (M1/M2/M3, 2020+): arm64
+
+### Install
+
+Install the application using the image you downloaded in the step above. Note that some images (such as the Windows standalone package or the Linux AppImage) do not require much installation, just put it somewhere reasonable.
+
+### Run
+
+Note that on Linux you will need to make the AppImage executable using
+
+```bash
+chmod +x Naev.Map.Explorer-*.AppImage
+```
+
 ## Using
 
 When you run the program, you are presented with a blank screen and a few options on the bottom for loading map data.
@@ -56,3 +100,23 @@ The app follows the standard Electron approach of UI run in the browser sandbox,
 ## Releasing
 
 I had AI build me a release system. Hopefully it works. I don't know anything about this stuff. See RELEASE.md (written by AI as well) for release information.
+
+## Troubleshooting
+
+### Linux: AppImage won't run
+```bash
+# Make sure it's executable
+chmod +x Naev.Map.Explorer-*.AppImage
+
+# If you get FUSE errors, extract and run:
+./Naev.Map.Explorer-*.AppImage --appimage-extract
+./squashfs-root/AppRun
+```
+
+### Windows: "Windows protected your PC" warning
+
+This is normal for unsigned applications. Click "More info" → "Run anyway". The app is safe but lacks a code signing certificate (~$400/year).
+
+### macOS: "Cannot open because it's from an unidentified developer"
+
+Right-click the app → Open (don't double-click the first time). This bypasses Gatekeeper for unsigned apps. I'm also not paying for code signing on macOS.
