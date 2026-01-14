@@ -2,7 +2,8 @@ const {
     app,
     BrowserWindow,
     ipcMain,
-    dialog
+    dialog,
+    screen
 } = require('electron');
 const path = require('path');
 const gx = require("./github.js");
@@ -16,9 +17,21 @@ const naev = require("./naev.js");
  * Create the UI
  */
 function createWindow() {
+    // Get primary display dimensions
+    const primary_display = screen.getPrimaryDisplay();
+    const { width: screen_width, height: screen_height } = primary_display.workAreaSize;
+
+    // Default dimensions
+    const default_width = 1200;
+    const default_height = 1300;
+
+    // Use default size, but cap at 90% of screen size to ensure it fits
+    const window_width = Math.min(default_width, Math.floor(screen_width * 0.9));
+    const window_height = Math.min(default_height, Math.floor(screen_height * 0.9));
+
     const mainwin = new BrowserWindow({
-        width: 1200,
-        height: 1300,
+        width: window_width,
+        height: window_height,
         webPreferences: {
             preload: path.join(__dirname, 'preload.js'),
             sandbox: true,
