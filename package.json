@@ -1,6 +1,6 @@
 {
     "name": "naev_map_explorer",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "description": "Interactive map explorer for the open-source game Naev",
     "homepage": "https://github.com/nathan-b/naev_map_explorer",
     "main": "js/index.js",
